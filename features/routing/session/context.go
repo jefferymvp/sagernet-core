@@ -117,6 +117,14 @@ func (ctx *Context) GetSkipDNSResolve() bool {
 	return ctx.Content.SkipDNSResolve
 }
 
+// GetUid implements routing.Context.
+func (ctx *Context) GetUid() uint32 {
+	if ctx.Inbound == nil {
+		return 0
+	}
+	return ctx.Inbound.Uid
+}
+
 // AsRoutingContext creates a context from context.context with session info.
 func AsRoutingContext(ctx context.Context) routing.Context {
 	return &Context{

@@ -214,6 +214,7 @@ func parseFieldRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRu
 		InboundTag *cfgcommon.StringList  `json:"inboundTag"`
 		Protocols  *cfgcommon.StringList  `json:"protocol"`
 		Attributes string                 `json:"attrs"`
+		UidList    *cfgcommon.UidList     `json:"uidList"`
 	}
 	rawFieldRule := new(RawFieldRule)
 	err := json.Unmarshal(msg, rawFieldRule)
@@ -307,6 +308,10 @@ func parseFieldRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRu
 
 	if len(rawFieldRule.Attributes) > 0 {
 		rule.Attributes = rawFieldRule.Attributes
+	}
+
+	if rawFieldRule.UidList != nil && len(*rawFieldRule.UidList) > 0 {
+		rule.UidList = rawFieldRule.UidList.Build()
 	}
 
 	return rule, nil

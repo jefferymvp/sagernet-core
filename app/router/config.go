@@ -153,6 +153,10 @@ func (rr *RoutingRule) BuildCondition() (Condition, error) {
 		conds.Add(cond)
 	}
 
+	if rr.UidList != nil && len(rr.UidList.Uid) > 0 {
+		conds.Add(NewUidMatcher(rr.UidList))
+	}
+
 	if conds.Len() == 0 {
 		return nil, newError("this rule has no effective fields").AtWarning()
 	}

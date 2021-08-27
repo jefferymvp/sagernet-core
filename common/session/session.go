@@ -43,6 +43,8 @@ type Inbound struct {
 	Tag string
 	// User is the user that authencates for the inbound. May be nil if the protocol allows anounymous traffic.
 	User *protocol.MemoryUser
+	// Uid is the unix user id for the inbound connection
+	Uid uint32
 }
 
 // Outbound is the metadata of an outbound connection.

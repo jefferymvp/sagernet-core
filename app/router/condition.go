@@ -335,3 +335,19 @@ func (m *AttributeMatcher) Apply(ctx routing.Context) bool {
 	}
 	return m.Match(attributes)
 }
+
+type UidMatcher struct {
+	uidList map[uint32]bool
+}
+
+func NewUidMatcher(list *net.UidList) *UidMatcher {
+	m := UidMatcher{uidList: map[uint32]bool{}}
+	for _, uid := range list.Uid {
+		m.uidList[uid] = true
+	}
+	return &m
+}
+
+func (u UidMatcher) Apply(ctx routing.Context) bool {
+	return u.uidList[ctx.GetUid()]
+}
