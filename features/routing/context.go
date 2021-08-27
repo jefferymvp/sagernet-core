@@ -42,4 +42,6 @@ type Context interface {
 	GetSkipDNSResolve() bool
 
 	GetUid() uint32
+
+	GetAppStatus() []string
 }

@@ -125,6 +125,7 @@ message RoutingRule {
   string domain_matcher = 17;
 
   v2ray.core.common.net.UidList uid_list = 18;
+  repeated string app_status = 19;
 
 }
 

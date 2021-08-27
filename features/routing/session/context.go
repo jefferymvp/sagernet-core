@@ -125,6 +125,13 @@ func (ctx *Context) GetUid() uint32 {
 	return ctx.Inbound.Uid
 }
 
+func (ctx *Context) GetAppStatus() []string {
+	if ctx.Inbound == nil {
+		return nil
+	}
+	return ctx.Inbound.AppStatus
+}
+
 // AsRoutingContext creates a context from context.context with session info.
 func AsRoutingContext(ctx context.Context) routing.Context {
 	return &Context{
