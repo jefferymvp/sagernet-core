@@ -5,6 +5,7 @@ package grpc
 
 import (
 	"context"
+	"google.golang.org/grpc/metadata"
 	gonet "net"
 	"sync"
 	"time"
@@ -59,10 +60,21 @@ func dialgRPC(ctx context.Context, dest net.Destination, streamSettings *interne
 		return nil, newError("Cannot dial grpc").Base(err)
 	}
 	client := encoding.NewGunServiceClient(conn)
-	gunService, err := client.(encoding.GunServiceClientX).TunCustomName(ctx, grpcSettings.ServiceName)
+	header := metadata.New(map[string]string{"mode": "raw"})
+	gunService, err := client.(encoding.GunServiceClientX).TunCustomName(ctx, grpcSettings.ServiceName, grpc.Header(&header))
 	if err != nil {
 		canceller()
 		return nil, newError("Cannot dial grpc").Base(err)
+	}
+	header, err = gunService.Header()
+	if err != nil {
+		canceller()
+		return nil, newError("Cannot get grpc response header").Base(err)
+	}
+	for key, values := range header {
+		if key == "mode" && len(values) == 1 && values[0] == "raw" {
+			return encoding.NewRawConn(gunService), nil
+		}
 	}
 	return encoding.NewGunConn(gunService, nil), nil
 }

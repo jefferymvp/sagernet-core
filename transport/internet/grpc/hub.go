@@ -28,6 +28,10 @@ type Listener struct {
 	s *grpc.Server
 }
 
+func (l Listener) HandleConn(connection internet.Connection) {
+	l.handler(connection)
+}
+
 func (l Listener) Tun(server encoding.GunService_TunServer) error {
 	tunCtx, cancel := context.WithCancel(l.ctx)
 	l.handler(encoding.NewGunConn(server, cancel))
