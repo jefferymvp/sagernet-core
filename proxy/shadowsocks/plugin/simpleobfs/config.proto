@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package v2ray.core.proxy.shadowsocks.plugin.simpleobfs;
+option csharp_namespace = "V2Ray.Core.Proxy.Shadowsocks.Plugin.SimpleObfs";
+option go_package = "github.com/v2fly/v2ray-core/v4/proxy/shadowsocks/plugin/simpleobfs";
+option java_package = "com.v2ray.core.proxy.shadowsocks.plugin.simpleobfs";
+option java_multiple_files = true;
+
+import "common/net/destination.proto";
+
+message ServerConfig {
+  v2ray.core.common.net.Endpoint upstream = 1;
+  string host = 2;
+  string mode = 3;
+  v2ray.core.common.net.Endpoint fallover = 4;
+}
+
+message ClientConfig {
+  v2ray.core.common.net.Endpoint server = 1;
+  string host = 2;
+  string mode = 3;
+}
