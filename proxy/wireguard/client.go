@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	core "github.com/v2fly/v2ray-core/v4"
 	"github.com/v2fly/v2ray-core/v4/common"
 	"github.com/v2fly/v2ray-core/v4/common/buf"
@@ -105,7 +106,7 @@ func (o *Outbound) Init(config *Config, policyManager policy.Manager) error {
 	}
 
 	if o.destination.Address.Family().IsDomain() {
-		o.endpoint.IP = []byte{172, 19, 0, 3}
+		o.endpoint.IP = []byte{1, 0, 0, 1}
 	} else {
 		o.endpoint.IP = o.destination.Address.IP()
 	}
@@ -179,7 +180,17 @@ func (o *Outbound) Init(config *Config, policyManager policy.Manager) error {
 		return newError("failed to create wireguard device").Base(err)
 	}
 
-	dev := device.NewDevice(tun, o, device.NewLogger(device.LogLevelVerbose, ""))
+	dev := device.NewDevice(tun, o, &device.Logger{
+		Verbosef: func(format string, args ...interface{}) {
+			newError(fmt.Sprintf(format, args...)).AtDebug().WriteToLog()
+		},
+		Errorf: func(format string, args ...interface{}) {
+			newError(fmt.Sprintf(format, args...)).WriteToLog()
+		},
+	})
+
+	newError("created wireguard ipc conf: ", ipcConf).AtDebug().WriteToLog()
+
 	err = dev.IpcSet(ipcConf)
 	if err != nil {
 		return newError("failed to set wireguard ipc conf").Base(err)
@@ -217,6 +228,8 @@ func (o *Outbound) Process(ctx context.Context, link *transport.Link, dialer int
 
 	var conn internet.Connection
 	{
+		ctx := core.ToBackgroundDetachedContext(ctx)
+
 		var err error
 
 		switch destination.Network {
@@ -233,7 +246,7 @@ func (o *Outbound) Process(ctx context.Context, link *transport.Link, dialer int
 		}
 
 		if err != nil {
-			return err
+			return newError("failed to dial to virtual device").Base(err)
 		}
 	}
 
@@ -301,7 +314,7 @@ func (o *Outbound) connect() (*remoteConnection, error) {
 		return c, nil
 	}
 
-	conn, err := o.dialer.Dial(o.ctx, o.destination)
+	conn, err := o.dialer.Dial(core.ToBackgroundDetachedContext(o.ctx), o.destination)
 	if err == nil {
 		o.connection = &remoteConnection{
 			conn,
