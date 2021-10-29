@@ -3,6 +3,7 @@ module github.com/v2fly/v2ray-core/v4
 go 1.17
 
 require (
+	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da
 	github.com/dgryski/go-camellia v0.0.0-20191119043421-69a8a13fb23d
 	github.com/dgryski/go-idea v0.0.0-20170306091226-d2fb45a411fb
 	github.com/dgryski/go-rc2 v0.0.0-20150621095337-8a9021637152

@@ -10,10 +10,11 @@ import (
 	"crypto/sha1"
 	"golang.org/x/crypto/blowfish"
 	"golang.org/x/crypto/cast5"
-	"golang.org/x/crypto/chacha20"
 	"io"
 	"strings"
 
+	"github.com/aead/chacha20"
+	"github.com/aead/chacha20/chacha"
 	"github.com/dgryski/go-camellia"
 	"github.com/dgryski/go-idea"
 	"github.com/dgryski/go-rc2"
@@ -113,84 +114,84 @@ func (a *Account) getCipher() (Cipher, error) {
 	case CipherType_AES_128_CTR:
 		return &StreamCipher{
 			KeyBytes:       16,
-			IVBytes:        16,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cipher.NewCTR),
 			DecryptCreator: blockStream(aes.NewCipher, cipher.NewCTR),
 		}, nil
 	case CipherType_AES_192_CTR:
 		return &StreamCipher{
 			KeyBytes:       24,
-			IVBytes:        24,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cipher.NewCTR),
 			DecryptCreator: blockStream(aes.NewCipher, cipher.NewCTR),
 		}, nil
 	case CipherType_AES_256_CTR:
 		return &StreamCipher{
 			KeyBytes:       32,
-			IVBytes:        32,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cipher.NewCTR),
 			DecryptCreator: blockStream(aes.NewCipher, cipher.NewCTR),
 		}, nil
 	case CipherType_AES_128_CFB:
 		return &StreamCipher{
 			KeyBytes:       16,
-			IVBytes:        16,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(aes.NewCipher, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_AES_192_CFB:
 		return &StreamCipher{
 			KeyBytes:       24,
-			IVBytes:        24,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(aes.NewCipher, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_AES_256_CFB:
 		return &StreamCipher{
 			KeyBytes:       32,
-			IVBytes:        32,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(aes.NewCipher, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_AES_128_CFB8:
 		return &StreamCipher{
 			KeyBytes:       16,
-			IVBytes:        16,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cfb8.NewEncrypter),
 			DecryptCreator: blockStream(aes.NewCipher, cfb8.NewDecrypter),
 		}, nil
 	case CipherType_AES_192_CFB8:
 		return &StreamCipher{
 			KeyBytes:       24,
-			IVBytes:        24,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cfb8.NewEncrypter),
 			DecryptCreator: blockStream(aes.NewCipher, cfb8.NewDecrypter),
 		}, nil
 	case CipherType_AES_256_CFB8:
 		return &StreamCipher{
 			KeyBytes:       32,
-			IVBytes:        32,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cfb8.NewEncrypter),
 			DecryptCreator: blockStream(aes.NewCipher, cfb8.NewDecrypter),
 		}, nil
 	case CipherType_AES_128_OFB:
 		return &StreamCipher{
 			KeyBytes:       16,
-			IVBytes:        16,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cfb8.NewEncrypter),
 			DecryptCreator: blockStream(aes.NewCipher, cfb8.NewDecrypter),
 		}, nil
 	case CipherType_AES_192_OFB:
 		return &StreamCipher{
 			KeyBytes:       24,
-			IVBytes:        24,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cfb8.NewEncrypter),
 			DecryptCreator: blockStream(aes.NewCipher, cfb8.NewDecrypter),
 		}, nil
 	case CipherType_AES_256_OFB:
 		return &StreamCipher{
 			KeyBytes:       32,
-			IVBytes:        32,
+			IVBytes:        aes.BlockSize,
 			EncryptCreator: blockStream(aes.NewCipher, cfb8.NewEncrypter),
 			DecryptCreator: blockStream(aes.NewCipher, cfb8.NewDecrypter),
 		}, nil
@@ -225,129 +226,125 @@ func (a *Account) getCipher() (Cipher, error) {
 	case CipherType_BF_CFB:
 		return &StreamCipher{
 			KeyBytes:       16,
-			IVBytes:        16,
+			IVBytes:        blowfish.BlockSize,
 			EncryptCreator: blockStream(func(key []byte) (cipher.Block, error) { return blowfish.NewCipher(key) }, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(func(key []byte) (cipher.Block, error) { return blowfish.NewCipher(key) }, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_CAST5_CFB:
 		return &StreamCipher{
 			KeyBytes:       16,
-			IVBytes:        16,
+			IVBytes:        cast5.BlockSize,
 			EncryptCreator: blockStream(func(key []byte) (cipher.Block, error) { return cast5.NewCipher(key) }, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(func(key []byte) (cipher.Block, error) { return cast5.NewCipher(key) }, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_DES_CFB:
 		return &StreamCipher{
 			KeyBytes:       8,
-			IVBytes:        8,
+			IVBytes:        des.BlockSize,
 			EncryptCreator: blockStream(des.NewCipher, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(des.NewCipher, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_IDEA_CFB:
 		return &StreamCipher{
 			KeyBytes:       16,
-			IVBytes:        16,
+			IVBytes:        8,
 			EncryptCreator: blockStream(idea.NewCipher, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(idea.NewCipher, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_RC2_CFB:
 		return &StreamCipher{
 			KeyBytes:       16,
-			IVBytes:        16,
+			IVBytes:        rc2.BlockSize,
 			EncryptCreator: blockStream(func(key []byte) (cipher.Block, error) { return rc2.New(key, 16) }, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(func(key []byte) (cipher.Block, error) { return rc2.New(key, 16) }, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_SEED_CFB:
 		return &StreamCipher{
 			KeyBytes:       16,
-			IVBytes:        16,
+			IVBytes:        seed.BlockSize,
 			EncryptCreator: blockStream(seed.NewCipher, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(seed.NewCipher, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_CAMELLIA_128_CFB:
 		return &StreamCipher{
 			KeyBytes:       16,
-			IVBytes:        16,
+			IVBytes:        camellia.BlockSize,
 			EncryptCreator: blockStream(camellia.New, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(camellia.New, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_CAMELLIA_192_CFB:
 		return &StreamCipher{
 			KeyBytes:       24,
-			IVBytes:        24,
+			IVBytes:        camellia.BlockSize,
 			EncryptCreator: blockStream(camellia.New, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(camellia.New, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_CAMELLIA_256_CFB:
 		return &StreamCipher{
 			KeyBytes:       32,
-			IVBytes:        32,
+			IVBytes:        camellia.BlockSize,
 			EncryptCreator: blockStream(camellia.New, cipher.NewCFBEncrypter),
 			DecryptCreator: blockStream(camellia.New, cipher.NewCFBDecrypter),
 		}, nil
 	case CipherType_CAMELLIA_128_CFB8:
 		return &StreamCipher{
 			KeyBytes:       16,
-			IVBytes:        16,
+			IVBytes:        camellia.BlockSize,
 			EncryptCreator: blockStream(camellia.New, cfb8.NewEncrypter),
 			DecryptCreator: blockStream(camellia.New, cfb8.NewDecrypter),
 		}, nil
 	case CipherType_CAMELLIA_192_CFB8:
 		return &StreamCipher{
 			KeyBytes:       24,
-			IVBytes:        24,
+			IVBytes:        camellia.BlockSize,
 			EncryptCreator: blockStream(camellia.New, cfb8.NewEncrypter),
 			DecryptCreator: blockStream(camellia.New, cfb8.NewDecrypter),
 		}, nil
 	case CipherType_CAMELLIA_256_CFB8:
 		return &StreamCipher{
 			KeyBytes:       32,
-			IVBytes:        32,
+			IVBytes:        camellia.BlockSize,
 			EncryptCreator: blockStream(camellia.New, cfb8.NewEncrypter),
 			DecryptCreator: blockStream(camellia.New, cfb8.NewDecrypter),
 		}, nil
 	case CipherType_SALSA20:
 		return &StreamCipher{
-			KeyBytes: 32,
-			IVBytes:  32,
-			EncryptCreator: func(key []byte, iv []byte) (cipher.Stream, error) {
-				return crypto.NewSalsa20(key)
-			},
-			DecryptCreator: func(key []byte, iv []byte) (cipher.Stream, error) {
-				return crypto.NewSalsa20(key)
-			},
+			KeyBytes:       32,
+			IVBytes:        8,
+			EncryptCreator: crypto.NewSalsa20,
+			DecryptCreator: crypto.NewSalsa20,
 		}, nil
 	case CipherType_CHACHA20:
 		return &StreamCipher{
-			KeyBytes: 32,
-			IVBytes:  8,
+			KeyBytes: chacha.KeySize,
+			IVBytes:  chacha.NonceSize,
 			EncryptCreator: func(key []byte, iv []byte) (cipher.Stream, error) {
-				return chacha20.NewUnauthenticatedCipher(key, iv)
+				return chacha20.NewCipher(iv, key)
 			},
 			DecryptCreator: func(key []byte, iv []byte) (cipher.Stream, error) {
-				return chacha20.NewUnauthenticatedCipher(key, iv)
+				return chacha20.NewCipher(iv, key)
 			},
 		}, nil
 	case CipherType_CHACHA20_IETF:
 		return &StreamCipher{
-			KeyBytes: 32,
-			IVBytes:  chacha20.NonceSize,
+			KeyBytes: chacha.KeySize,
+			IVBytes:  chacha.INonceSize,
 			EncryptCreator: func(key []byte, iv []byte) (cipher.Stream, error) {
-				return chacha20.NewUnauthenticatedCipher(key, iv)
+				return chacha20.NewCipher(iv, key)
 			},
 			DecryptCreator: func(key []byte, iv []byte) (cipher.Stream, error) {
-				return chacha20.NewUnauthenticatedCipher(key, iv)
+				return chacha20.NewCipher(iv, key)
 			},
 		}, nil
 	case CipherType_XCHACHA20:
 		return &StreamCipher{
-			KeyBytes: 32,
-			IVBytes:  chacha20.NonceSizeX,
+			KeyBytes: chacha.KeySize,
+			IVBytes:  chacha.XNonceSize,
 			EncryptCreator: func(key []byte, iv []byte) (cipher.Stream, error) {
-				return chacha20.NewUnauthenticatedCipher(key, iv)
+				return chacha20.NewCipher(iv, key)
 			},
 			DecryptCreator: func(key []byte, iv []byte) (cipher.Stream, error) {
-				return chacha20.NewUnauthenticatedCipher(key, iv)
+				return chacha20.NewCipher(iv, key)
 			},
 		}, nil
 	default:
@@ -563,20 +560,29 @@ func CipherFromString(c string) CipherType {
 }
 
 func passwordToCipherKey(password []byte, keySize int32) []byte {
-	key := make([]byte, 0, keySize)
+	const md5Len = 16
 
-	md5Sum := md5.Sum(password)
-	key = append(key, md5Sum[:]...)
+	cnt := (int(keySize)-1)/md5Len + 1
+	m := make([]byte, cnt*md5Len)
+	copy(m, md5sum(password))
 
-	for int32(len(key)) < keySize {
-		md5Hash := md5.New()
-		common.Must2(md5Hash.Write(md5Sum[:]))
-		common.Must2(md5Hash.Write(password))
-		md5Hash.Sum(md5Sum[:0])
-
-		key = append(key, md5Sum[:]...)
+	// Repeatedly call md5 until bytes generated is enough.
+	// Each call to md5 uses data: prev md5 sum + password.
+	d := make([]byte, md5Len+len(password))
+	start := 0
+	for i := 1; i < cnt; i++ {
+		start += md5Len
+		copy(d, m[start-md5Len:start])
+		copy(d[md5Len:], password)
+		copy(m[start:], md5sum(d))
 	}
-	return key
+	return m[:keySize]
+}
+
+func md5sum(d []byte) []byte {
+	h := md5.New()
+	h.Write(d)
+	return h.Sum(nil)
 }
 
 func hkdfSHA1(secret, salt, outKey []byte) {

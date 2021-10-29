@@ -35,13 +35,14 @@ func (s *Salsa20Cipher) XORKeyStream(dst, src []byte) {
 	s.counter += uint64(len(src))
 }
 
-func NewSalsa20(key []byte) (*Salsa20Cipher, error) {
+func NewSalsa20(key []byte, nonce []byte) (cipher.Stream, error) {
 	var fixedSizedKey [32]byte
 	if len(key) != 32 {
 		return nil, newError("key size must be 32")
 	}
 	copy(fixedSizedKey[:], key)
 	return &Salsa20Cipher{
-		key: fixedSizedKey,
+		key:   fixedSizedKey,
+		nonce: nonce,
 	}, nil
 }

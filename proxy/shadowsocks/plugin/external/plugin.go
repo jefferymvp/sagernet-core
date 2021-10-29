@@ -1,9 +1,10 @@
 package external
 
 import (
-	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,10 +24,12 @@ type Plugin struct {
 }
 
 func (p *Plugin) Init(localHost string, localPort string, remoteHost string, remotePort string, pluginOpts string, pluginArgs []string) error {
+	p.done = done.New()
 	path, err := exec.LookPath(p.Plugin)
 	if err != nil {
 		return newError("plugin ", p.Plugin, " not found").Base(err)
 	}
+	_, name := filepath.Split(path)
 	proc := &exec.Cmd{
 		Path: path,
 		Args: pluginArgs,
@@ -36,8 +39,12 @@ func (p *Plugin) Init(localHost string, localPort string, remoteHost string, rem
 			"SS_LOCAL_HOST=" + localHost,
 			"SS_LOCAL_PORT=" + localPort,
 		},
-		Stdout: log.Default().Writer(),
-		Stderr: log.Default().Writer(),
+		Stdout: &pluginOutWriter{
+			name: name,
+		},
+		Stderr: &pluginErrWriter{
+			name: name,
+		},
 	}
 	if pluginOpts != "" {
 		proc.Env = append(proc.Env, "SS_PLUGIN_OPTIONS="+pluginOpts)
@@ -65,6 +72,9 @@ func (p *Plugin) startPlugin(oldProc *exec.Cmd) *errors.Error {
 		Stderr: oldProc.Stderr,
 		Env:    oldProc.Env,
 	}
+
+	newError("start process ", proc.Path, " ", strings.Join(proc.Args, " ")).AtInfo().WriteToLog()
+
 	err := proc.Start()
 	if err != nil {
 		return newError("failed to start shadowsocks plugin ", proc.Path).Base(err)

@@ -395,7 +395,12 @@ func TestShadowsocksAES128GCMUDPMux(t *testing.T) {
 	}
 }
 
-func TestShadowsocksNone(t *testing.T) {
+func TestShadowsocksCiphers(t *testing.T) {
+	testShadowsocksWithCipher(t, shadowsocks.CipherType_NONE)
+	testShadowsocksWithCipher(t, shadowsocks.CipherType_AES_192_CTR)
+}
+
+func testShadowsocksWithCipher(t *testing.T, cipher shadowsocks.CipherType) {
 	tcpServer := tcp.Server{
 		MsgProcessor: xor,
 	}
@@ -406,7 +411,7 @@ func TestShadowsocksNone(t *testing.T) {
 
 	account := serial.ToTypedMessage(&shadowsocks.Account{
 		Password:   "shadowsocks-password",
-		CipherType: shadowsocks.CipherType_NONE,
+		CipherType: cipher,
 	})
 
 	serverPort := tcp.PickPort()
