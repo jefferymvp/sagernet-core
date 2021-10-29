@@ -94,6 +94,12 @@ func (o *Outbound) Init(config *Config, policyManager policy.Manager) error {
 	}
 
 	o.destination = spec.Destination()
+	o.destination.Network = config.Network
+
+	if o.destination.Network == net.Network_Unknown {
+		o.destination.Network = net.Network_UDP
+	}
+
 	o.endpoint = &conn.StdNetEndpoint{
 		Port: int(o.destination.Port),
 	}
@@ -295,7 +301,7 @@ func (o *Outbound) connect() (*remoteConnection, error) {
 		return c, nil
 	}
 
-	conn, err := o.dialer.Dial(context.Background(), o.destination)
+	conn, err := o.dialer.Dial(o.ctx, o.destination)
 	if err == nil {
 		o.connection = &remoteConnection{
 			conn,
