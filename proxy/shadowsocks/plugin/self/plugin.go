@@ -32,11 +32,17 @@ import (
 
 var _ shadowsocks.SIP003Plugin = (*Plugin)(nil)
 
+func init() {
+	shadowsocks.RegisterPlugin("v2ray-plugin", func() shadowsocks.SIP003Plugin {
+		return &Plugin{}
+	})
+}
+
 type Plugin struct {
 	instance *core.Instance
 }
 
-func (v *Plugin) Init(localHost string, localPort string, remoteHost string, remotePort string, pluginOpts string, pluginArgs []string) error {
+func (v *Plugin) Init(localHost string, localPort string, remoteHost string, remotePort string, pluginOpts string, pluginArgs []string, _ *shadowsocks.MemoryAccount) error {
 	opts := make(Args)
 
 	opts.Add("localAddr", localHost)

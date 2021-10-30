@@ -23,7 +23,7 @@ func (args Args) Get(key string) (value string, ok bool) {
 	return vals[0], true
 }
 
-// Append value to the list of values for key.
+// Add Append value to the list of values for key.
 func (args Args) Add(key, value string) {
 	args[key] = append(args[key], value)
 }
