@@ -30,7 +30,7 @@ import (
 
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
-		o := new(Outbound)
+		o := new(Client)
 		err := core.RequireFeatures(ctx, func(dispatcher routing.Dispatcher, policyManager policy.Manager, dnsClient dns.Client) error {
 			o.ctx = ctx
 			o.dispatcher = dispatcher
@@ -42,10 +42,11 @@ func init() {
 	}))
 }
 
-var _ proxy.Outbound = (*Outbound)(nil)
-var _ conn.Bind = (*Outbound)(nil)
+var _ proxy.Outbound = (*Client)(nil)
+var _ conn.Bind = (*Client)(nil)
+var _ common.Closable = (*Client)(nil)
 
-type Outbound struct {
+type Client struct {
 	sync.Mutex
 
 	ctx           context.Context
@@ -64,7 +65,7 @@ type Outbound struct {
 	connection  *remoteConnection
 }
 
-func (o *Outbound) Init(config *Config, policyManager policy.Manager) error {
+func (o *Client) Init(config *Config, policyManager policy.Manager) error {
 	o.sessionPolicy = policyManager.ForLevel(config.UserLevel)
 	o.destination = net.Destination{
 		Network: config.Network,
@@ -179,7 +180,7 @@ func (o *Outbound) Init(config *Config, policyManager policy.Manager) error {
 	return nil
 }
 
-func (o *Outbound) Process(ctx context.Context, link *transport.Link, dialer internet.Dialer) error {
+func (o *Client) Process(ctx context.Context, link *transport.Link, dialer internet.Dialer) error {
 	if o.dialer == nil {
 		o.dialer = dialer
 	}
@@ -274,7 +275,7 @@ func (r remoteConnection) Close() error {
 	return r.Connection.Close()
 }
 
-func (o *Outbound) connect() (*remoteConnection, error) {
+func (o *Client) connect() (*remoteConnection, error) {
 	if o.dialer == nil {
 		<-o.init.Wait()
 	}
@@ -301,11 +302,11 @@ func (o *Outbound) connect() (*remoteConnection, error) {
 	return o.connection, err
 }
 
-func (o *Outbound) Open(uint16) (fns []conn.ReceiveFunc, actualPort uint16, err error) {
+func (o *Client) Open(uint16) (fns []conn.ReceiveFunc, actualPort uint16, err error) {
 	return []conn.ReceiveFunc{o.Receive}, 0, nil
 }
 
-func (o *Outbound) Receive(b []byte) (n int, ep conn.Endpoint, err error) {
+func (o *Client) Receive(b []byte) (n int, ep conn.Endpoint, err error) {
 	var c *remoteConnection
 	c, err = o.connect()
 	if err != nil {
@@ -320,7 +321,7 @@ func (o *Outbound) Receive(b []byte) (n int, ep conn.Endpoint, err error) {
 	return
 }
 
-func (o *Outbound) Close() error {
+func (o *Client) Close() error {
 	o.Lock()
 	defer o.Unlock()
 
@@ -332,11 +333,11 @@ func (o *Outbound) Close() error {
 	return nil
 }
 
-func (o *Outbound) SetMark(uint32) error {
+func (o *Client) SetMark(uint32) error {
 	return nil
 }
 
-func (o *Outbound) Send(b []byte, _ conn.Endpoint) (err error) {
+func (o *Client) Send(b []byte, _ conn.Endpoint) (err error) {
 	var c *remoteConnection
 	c, err = o.connect()
 	if err != nil {
@@ -349,6 +350,6 @@ func (o *Outbound) Send(b []byte, _ conn.Endpoint) (err error) {
 	return err
 }
 
-func (o *Outbound) ParseEndpoint(string) (conn.Endpoint, error) {
+func (o *Client) ParseEndpoint(string) (conn.Endpoint, error) {
 	return o.endpoint, nil
 }

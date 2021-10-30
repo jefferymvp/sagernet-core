@@ -31,6 +31,7 @@ func init() {
 }
 
 var _ proxy.Outbound = (*Client)(nil)
+var _ common.Closable = (*Client)(nil)
 
 type Client struct {
 	sync.Mutex
@@ -187,4 +188,12 @@ func (c *Client) connect(ctx context.Context, dialer internet.Dialer) (*ssh.Clie
 	client := ssh.NewClient(clientConn, chans, reqs)
 	c.client = client
 	return client, nil
+}
+
+func (c *Client) Close() error {
+	sc := c.client
+	if sc != nil {
+		return sc.Close()
+	}
+	return nil
 }
