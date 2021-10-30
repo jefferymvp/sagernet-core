@@ -714,7 +714,6 @@ func TestShadowsocksSimpleObfsTLS(t *testing.T) {
 		},
 		Inbound: []*core.InboundHandlerConfig{
 			{
-				Tag: "in",
 				ReceiverSettings: serial.ToTypedMessage(&proxyman.ReceiverConfig{
 					PortRange: net.SinglePortRange(serverPort),
 					Listen:    net.NewIPOrDomain(net.LocalHostIP),
@@ -784,7 +783,7 @@ func TestShadowsocksSimpleObfsTLS(t *testing.T) {
 	defer CloseAllServers(servers)
 
 	var errGroup errgroup.Group
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1; i++ {
 		errGroup.Go(testTCPConn(clientPort, 10240*1024, time.Second*20))
 	}
 

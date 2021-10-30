@@ -95,7 +95,11 @@ func (v *Plugin) init(opts Args, pluginArgs []string) (*core.Config, error) {
 		logLevel   = flag.String("loglevel", "", "loglevel for self: debug, info, warning (default), error, none.")
 		fwmark     = flag.Int("fwmark", 0, "Set SO_MARK option for outbound sockets.")
 	)
-	flag.Parse(pluginArgs)
+
+	if err := flag.Parse(pluginArgs); err != nil {
+		return nil, newError("failed to parse plugin args").Base(err)
+	}
+
 	if c, b := opts.Get("mode"); b {
 		*mode = c
 	}

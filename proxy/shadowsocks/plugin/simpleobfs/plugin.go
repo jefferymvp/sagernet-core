@@ -76,10 +76,9 @@ func (p *Plugin) init(opts self.Args, pluginArgs []string) (*core.Config, error)
 		fallover   = flag.String("fallover", "", "fallback server")
 		logLevel   = flag.String("loglevel", "debug", "loglevel for self: debug, info, warning (default), error, none.")
 	)
-	flag.Parse(pluginArgs)
 
-	if c, b := opts.Get("mode"); b {
-		*mode = c
+	if err := flag.Parse(pluginArgs); err != nil {
+		return nil, newError("failed to parse plugin args").Base(err)
 	}
 
 	if c, b := opts.Get("localAddr"); b {
@@ -116,6 +115,10 @@ func (p *Plugin) init(opts self.Args, pluginArgs []string) (*core.Config, error)
 
 	if c, b := opts.Get("loglevel"); b {
 		*logLevel = c
+	}
+
+	if c, b := opts.Get("obfs"); b {
+		*mode = c
 	}
 
 	if c, b := opts.Get("host"); b {

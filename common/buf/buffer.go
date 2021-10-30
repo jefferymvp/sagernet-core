@@ -120,9 +120,7 @@ func (b *Buffer) Require(requiredLength int32) {
 // It panics if result size is larger than buf.Size.
 func (b *Buffer) Extend(n int32) []byte {
 	end := b.end + n
-	if end > int32(len(b.v)) {
-		b.Require(end)
-	}
+	b.Require(end)
 	ext := b.v[b.end:end]
 	b.end = end
 	return ext
