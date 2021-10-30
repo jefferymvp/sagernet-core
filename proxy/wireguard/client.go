@@ -16,7 +16,6 @@ import (
 	"github.com/v2fly/v2ray-core/v4/common"
 	"github.com/v2fly/v2ray-core/v4/common/buf"
 	"github.com/v2fly/v2ray-core/v4/common/net"
-	"github.com/v2fly/v2ray-core/v4/common/protocol"
 	"github.com/v2fly/v2ray-core/v4/common/session"
 	"github.com/v2fly/v2ray-core/v4/common/signal"
 	"github.com/v2fly/v2ray-core/v4/common/signal/done"
@@ -38,30 +37,6 @@ func init() {
 			o.dnsClient = dnsClient
 			o.init = done.New()
 			return o.Init(config.(*Config), policyManager)
-		})
-		return o, err
-	}))
-	common.Must(common.RegisterConfig((*SimplifiedConfig)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
-		o := new(Outbound)
-		err := core.RequireFeatures(ctx, func(dispatcher routing.Dispatcher, policyManager policy.Manager, dnsClient dns.Client) error {
-			sf := config.(*SimplifiedConfig)
-			cf := &Config{
-				Server: &protocol.ServerEndpoint{
-					Address: sf.Address,
-					Port:    sf.Port,
-				},
-				Network:       sf.Network,
-				PrivateKey:    sf.PrivateKey,
-				PeerPublicKey: sf.PeerPublicKey,
-				PreSharedKey:  sf.PreSharedKey,
-				Mtu:           sf.Mtu,
-				UserLevel:     sf.UserLevel,
-			}
-			o.ctx = ctx
-			o.dispatcher = dispatcher
-			o.dnsClient = dnsClient
-			o.init = done.New()
-			return o.Init(cf, policyManager)
 		})
 		return o, err
 	}))
@@ -91,12 +66,11 @@ type Outbound struct {
 
 func (o *Outbound) Init(config *Config, policyManager policy.Manager) error {
 	o.sessionPolicy = policyManager.ForLevel(config.UserLevel)
-	spec, err := protocol.NewServerSpecFromPB(config.Server)
-	if err != nil {
-		return err
+	o.destination = net.Destination{
+		Network: config.Network,
+		Address: config.Address.AsAddress(),
+		Port:    net.Port(config.Port),
 	}
-
-	o.destination = spec.Destination()
 	o.destination.Network = config.Network
 
 	if o.destination.Network == net.Network_Unknown {
