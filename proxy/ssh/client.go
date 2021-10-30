@@ -35,24 +35,27 @@ var _ common.Closable = (*Client)(nil)
 
 type Client struct {
 	sync.Mutex
+	config          *Config
 	sessionPolicy   policy.Session
 	server          net.Destination
 	client          *ssh.Client
-	username        string
 	auth            []ssh.AuthMethod
 	hostKeyCallback ssh.HostKeyCallback
 }
 
 func (c *Client) Init(config *Config, policyManager policy.Manager) error {
+	c.config = config
 	c.sessionPolicy = policyManager.ForLevel(config.UserLevel)
 	c.server = net.Destination{
 		Network: net.Network_TCP,
 		Address: config.Address.AsAddress(),
 		Port:    net.Port(config.Port),
 	}
-	c.username = config.User
-	if c.username == "" {
-		c.username = "root"
+	if config.User == "" {
+		config.User = "root"
+	}
+	if config.HostKeyAlgorithms != nil && len(config.HostKeyAlgorithms) == 0 {
+		config.HostKeyAlgorithms = nil
 	}
 
 	if config.PrivateKey != "" {
@@ -94,11 +97,12 @@ func (c *Client) Init(config *Config, policyManager policy.Manager) error {
 					return nil
 				}
 			}
-			return newError("ssh: host key mismatch, server send ", key.Type(), " ", base64.StdEncoding.EncodeToString(key.Marshal()))
+			return newError("ssh host key mismatch, server send ", key.Type(), " ", base64.StdEncoding.EncodeToString(key.Marshal()))
 		}
 	} else {
 		c.hostKeyCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			newError("ssh: server send ", key.Type(), " ", base64.StdEncoding.EncodeToString(key.Marshal())).AtInfo().WriteToLog()
+			newError("please save server public key for verifying").AtWarning().WriteToLog()
+			newError(key.Type(), " ", base64.StdEncoding.EncodeToString(key.Marshal())).AtWarning().WriteToLog()
 			return nil
 		}
 	}
@@ -128,7 +132,7 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			go func() {
 				err = client.Wait()
 				if err != nil {
-					newError("ssh client closed").Base(err).AtInfo().WriteToLog()
+					newError("ssh client closed").Base(err).AtDebug().WriteToLog()
 				}
 				c.Lock()
 				c.client = nil
@@ -163,10 +167,20 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 
 func (c *Client) connect(ctx context.Context, dialer internet.Dialer) (*ssh.Client, error) {
 	config := &ssh.ClientConfig{
-		User:            c.username,
-		Auth:            c.auth,
-		HostKeyCallback: c.hostKeyCallback,
+		User:              c.config.User,
+		Auth:              c.auth,
+		ClientVersion:     c.config.ClientVersion,
+		HostKeyAlgorithms: c.config.HostKeyAlgorithms,
+		HostKeyCallback:   c.hostKeyCallback,
+		BannerCallback: func(message string) error {
+			for _, line := range strings.Split(message, "\n") {
+				newError("| ", line).AtDebug().WriteToLog(session.ExportIDToError(ctx))
+			}
+			return nil
+		},
 	}
+
+	newError("open connection to ", c.server).AtDebug().WriteToLog(session.ExportIDToError(ctx))
 
 	var conn internet.Connection
 	err := retry.ExponentialBackoff(2, 100).On(func() error {
@@ -179,12 +193,14 @@ func (c *Client) connect(ctx context.Context, dialer internet.Dialer) (*ssh.Clie
 	})
 
 	if err != nil {
-		return nil, newError("failed to connect to destination").AtWarning().Base(err)
+		return nil, newError("failed to connect to ssh server").AtWarning().Base(err)
 	}
+
 	clientConn, chans, reqs, err := ssh.NewClientConn(conn, c.server.Address.String(), config)
 	if err != nil {
-		return nil, newError("failed to ssh").Base(err)
+		return nil, newError("failed to create ssh connection").Base(err)
 	}
+
 	client := ssh.NewClient(clientConn, chans, reqs)
 	c.client = client
 	return client, nil
