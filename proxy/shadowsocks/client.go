@@ -2,6 +2,7 @@ package shadowsocks
 
 import (
 	"context"
+	"github.com/v2fly/v2ray-core/v4/proxy"
 	"strconv"
 	"time"
 
@@ -19,6 +20,12 @@ import (
 	"github.com/v2fly/v2ray-core/v4/transport/internet"
 )
 
+var (
+	_ proxy.Outbound       = (*Client)(nil)
+	_ common.Closable       = (*Client)(nil)
+)
+
+
 // Client is a inbound handler for Shadowsocks protocol
 type Client struct {
 	serverPicker  protocol.ServerPicker
@@ -26,6 +33,13 @@ type Client struct {
 
 	plugin         SIP003Plugin
 	pluginOverride net.Destination
+}
+
+func (c *Client) Close() error {
+	if c.plugin != nil {
+		return c.plugin.Close()
+	}
+	return nil
 }
 
 // NewClient create a new Shadowsocks client.

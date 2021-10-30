@@ -30,6 +30,7 @@ import (
 var (
 	_ proxy.Inbound       = (*Server)(nil)
 	_ inbound.Initializer = (*Server)(nil)
+	_ common.Closable       = (*Server)(nil)
 )
 
 type Server struct {
@@ -46,6 +47,13 @@ type Server struct {
 
 func (s *Server) Initialize(self inbound.Handler) {
 	s.tag = self.Tag()
+}
+
+func (s *Server) Close() error {
+	if s.plugin != nil {
+		return s.plugin.Close()
+	}
+	return nil
 }
 
 // NewServer create a new Shadowsocks server.
