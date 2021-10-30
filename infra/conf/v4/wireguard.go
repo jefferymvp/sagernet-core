@@ -2,6 +2,7 @@ package v4
 
 import (
 	"github.com/golang/protobuf/proto"
+
 	"github.com/v2fly/v2ray-core/v4/common/protocol"
 	"github.com/v2fly/v2ray-core/v4/infra/conf/cfgcommon"
 	"github.com/v2fly/v2ray-core/v4/proxy/wireguard"

@@ -4,13 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
+	"time"
+
 	"github.com/v2fly/v2ray-core/v4/common/buf"
 	"github.com/v2fly/v2ray-core/v4/common/net"
 	"github.com/v2fly/v2ray-core/v4/common/task"
 	"github.com/v2fly/v2ray-core/v4/common/tlsdissector"
 	"github.com/v2fly/v2ray-core/v4/transport"
 	"github.com/v2fly/v2ray-core/v4/transport/internet"
-	"time"
 )
 
 func (o *outbound) processTLS(ctx context.Context, link *transport.Link, dialer internet.Dialer) error {

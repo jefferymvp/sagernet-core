@@ -1,9 +1,10 @@
 package simpleobfs
 
 import (
-	"github.com/v2fly/v2ray-core/v4/common/buf"
 	"io"
 	"sync"
+
+	"github.com/v2fly/v2ray-core/v4/common/buf"
 )
 
 type cachedReader struct {
@@ -40,7 +41,7 @@ func (c *cachedReader) cachedBytes() buf.MultiBuffer {
 	return c.cached
 }
 
-func (c *cachedReader) release()  {
+func (c *cachedReader) release() {
 	mb := c.cachedBytes()
 	if mb != nil {
 		buf.ReleaseMulti(mb)

@@ -3,7 +3,6 @@ package browserforwarder
 import (
 	"bytes"
 	"context"
-	"github.com/v2fly/v2ray-core/v4/common/platform"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/v2fly/v2ray-core/v4/common"
 	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/platform"
 	"github.com/v2fly/v2ray-core/v4/common/platform/filesystem"
 	"github.com/v2fly/v2ray-core/v4/features/extension"
 	"github.com/v2fly/v2ray-core/v4/transport/internet"

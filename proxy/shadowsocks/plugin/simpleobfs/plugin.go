@@ -2,6 +2,10 @@ package simpleobfs
 
 import (
 	"flag"
+	"strconv"
+
+	"google.golang.org/protobuf/types/known/anypb"
+
 	core "github.com/v2fly/v2ray-core/v4"
 	"github.com/v2fly/v2ray-core/v4/app/dispatcher"
 	"github.com/v2fly/v2ray-core/v4/app/proxyman"
@@ -11,8 +15,6 @@ import (
 	"github.com/v2fly/v2ray-core/v4/proxy/freedom"
 	"github.com/v2fly/v2ray-core/v4/proxy/shadowsocks"
 	"github.com/v2fly/v2ray-core/v4/proxy/shadowsocks/plugin/self"
-	"google.golang.org/protobuf/types/known/anypb"
-	"strconv"
 )
 
 //go:generate go run github.com/v2fly/v2ray-core/v4/common/errors/errorgen

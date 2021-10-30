@@ -1,11 +1,12 @@
 package plugin
 
 import (
+	"strings"
+
 	"github.com/v2fly/v2ray-core/v4/proxy/shadowsocks"
 	"github.com/v2fly/v2ray-core/v4/proxy/shadowsocks/plugin/external"
 	"github.com/v2fly/v2ray-core/v4/proxy/shadowsocks/plugin/self"
 	"github.com/v2fly/v2ray-core/v4/proxy/shadowsocks/plugin/simpleobfs"
-	"strings"
 )
 
 func init() {

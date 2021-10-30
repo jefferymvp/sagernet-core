@@ -5,14 +5,15 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/base64"
+	"net/http"
+	"time"
+
 	"github.com/v2fly/v2ray-core/v4/common/buf"
 	"github.com/v2fly/v2ray-core/v4/common/net"
 	"github.com/v2fly/v2ray-core/v4/common/session"
 	"github.com/v2fly/v2ray-core/v4/common/task"
 	"github.com/v2fly/v2ray-core/v4/features/routing"
 	"github.com/v2fly/v2ray-core/v4/transport/internet"
-	"net/http"
-	"time"
 )
 
 func (h *inbound) processHTTP(ctx context.Context, _ net.Network, connection internet.Connection, dispatcher routing.Dispatcher) error {

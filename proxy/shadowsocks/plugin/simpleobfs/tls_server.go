@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
+	"time"
+
 	"github.com/v2fly/v2ray-core/v4/common"
 	"github.com/v2fly/v2ray-core/v4/common/buf"
 	"github.com/v2fly/v2ray-core/v4/common/net"
@@ -11,7 +13,6 @@ import (
 	"github.com/v2fly/v2ray-core/v4/common/tlsdissector"
 	"github.com/v2fly/v2ray-core/v4/features/routing"
 	"github.com/v2fly/v2ray-core/v4/transport/internet"
-	"time"
 )
 
 func (h *inbound) processTLS(ctx context.Context, network net.Network, connection internet.Connection, dispatcher routing.Dispatcher) error {
