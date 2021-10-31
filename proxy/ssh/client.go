@@ -17,6 +17,8 @@ import (
 	"github.com/v2fly/v2ray-core/v4/transport"
 	"github.com/v2fly/v2ray-core/v4/transport/internet"
 	"golang.org/x/crypto/ssh"
+	"math/rand"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -43,6 +45,16 @@ type Client struct {
 	hostKeyCallback ssh.HostKeyCallback
 }
 
+func randomVersion() string {
+	version := "SSH-2.0-OpenSSH_"
+	if rand.Intn(1) == 0 {
+		version += "7." + strconv.Itoa(rand.Intn(10))
+	} else {
+		version += "8." + strconv.Itoa(rand.Intn(9))
+	}
+	return version
+}
+
 func (c *Client) Init(config *Config, policyManager policy.Manager) error {
 	c.config = config
 	c.sessionPolicy = policyManager.ForLevel(config.UserLevel)
@@ -56,6 +68,9 @@ func (c *Client) Init(config *Config, policyManager policy.Manager) error {
 	}
 	if config.HostKeyAlgorithms != nil && len(config.HostKeyAlgorithms) == 0 {
 		config.HostKeyAlgorithms = nil
+	}
+	if config.ClientVersion == "" {
+		config.ClientVersion = randomVersion()
 	}
 
 	if config.PrivateKey != "" {
