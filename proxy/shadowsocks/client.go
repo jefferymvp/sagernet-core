@@ -2,7 +2,6 @@ package shadowsocks
 
 import (
 	"context"
-	"github.com/v2fly/v2ray-core/v4/proxy"
 	"strconv"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/v2fly/v2ray-core/v4/common/signal"
 	"github.com/v2fly/v2ray-core/v4/common/task"
 	"github.com/v2fly/v2ray-core/v4/features/policy"
+	"github.com/v2fly/v2ray-core/v4/proxy"
 	"github.com/v2fly/v2ray-core/v4/transport"
 	"github.com/v2fly/v2ray-core/v4/transport/internet"
 )

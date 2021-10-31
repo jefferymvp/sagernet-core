@@ -4,6 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"math/rand"
+	"strconv"
+	"strings"
+	"sync"
+
+	"golang.org/x/crypto/ssh"
+
 	core "github.com/v2fly/v2ray-core/v4"
 	"github.com/v2fly/v2ray-core/v4/common"
 	"github.com/v2fly/v2ray-core/v4/common/buf"
@@ -16,11 +23,6 @@ import (
 	"github.com/v2fly/v2ray-core/v4/proxy"
 	"github.com/v2fly/v2ray-core/v4/transport"
 	"github.com/v2fly/v2ray-core/v4/transport/internet"
-	"golang.org/x/crypto/ssh"
-	"math/rand"
-	"strconv"
-	"strings"
-	"sync"
 )
 
 func init() {
@@ -32,8 +34,10 @@ func init() {
 	}))
 }
 
-var _ proxy.Outbound = (*Client)(nil)
-var _ common.Closable = (*Client)(nil)
+var (
+	_ proxy.Outbound  = (*Client)(nil)
+	_ common.Closable = (*Client)(nil)
+)
 
 type Client struct {
 	sync.Mutex
@@ -177,7 +181,6 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 	}
 
 	return nil
-
 }
 
 func (c *Client) connect(ctx context.Context, dialer internet.Dialer) (*ssh.Client, error) {
@@ -206,7 +209,6 @@ func (c *Client) connect(ctx context.Context, dialer internet.Dialer) (*ssh.Clie
 		conn = rawConn
 		return nil
 	})
-
 	if err != nil {
 		return nil, newError("failed to connect to ssh server").AtWarning().Base(err)
 	}

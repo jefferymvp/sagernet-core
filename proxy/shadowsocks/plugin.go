@@ -6,8 +6,10 @@ import (
 	"github.com/v2fly/v2ray-core/v4/transport/internet"
 )
 
-var pluginLoader func(plugin string) SIP003Plugin
-var plugins map[string]func() SIP003Plugin
+var (
+	pluginLoader func(plugin string) SIP003Plugin
+	plugins      map[string]func() SIP003Plugin
+)
 
 func init() {
 	plugins = make(map[string]func() SIP003Plugin)

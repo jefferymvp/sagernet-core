@@ -19,9 +19,7 @@ const (
 	AppData          = 0x17
 )
 
-var (
-	ErrBadType = errors.New("bad type")
-)
+var ErrBadType = errors.New("bad type")
 
 type Version uint16
 

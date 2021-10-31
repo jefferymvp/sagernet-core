@@ -72,6 +72,7 @@ func setConfArgs(cmd *base.Command) {
 	cmd.Flag.StringVar(&outputFormat, "o", "json", "")
 	cmd.Flag.BoolVar(&confDirRecursively, "r", false, "")
 }
+
 func executeConvert(cmd *base.Command, args []string) {
 	setConfArgs(cmd)
 	cmd.Flag.Parse(args)

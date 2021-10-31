@@ -173,8 +173,7 @@ func (r *PacketReader) ReadMultiBuffer() (MultiBuffer, error) {
 	return MultiBuffer{b}, nil
 }
 
-type NOPReader struct {
-}
+type NOPReader struct{}
 
 // ReadMultiBuffer implements Reader.
 func (r *NOPReader) ReadMultiBuffer() (MultiBuffer, error) {

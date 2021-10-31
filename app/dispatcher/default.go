@@ -367,6 +367,7 @@ func sniffer(ctx context.Context, cReader *cachedReader, metadataOnly bool) (Sni
 	}
 	return contentResult, contentErr
 }
+
 func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.Link, destination net.Destination) {
 	ob := session.OutboundFromContext(ctx)
 	if d.hosts != nil && destination.Address.Family().IsDomain() {

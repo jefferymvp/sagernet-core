@@ -42,9 +42,11 @@ func init() {
 	}))
 }
 
-var _ proxy.Outbound = (*Client)(nil)
-var _ conn.Bind = (*Client)(nil)
-var _ common.Closable = (*Client)(nil)
+var (
+	_ proxy.Outbound  = (*Client)(nil)
+	_ conn.Bind       = (*Client)(nil)
+	_ common.Closable = (*Client)(nil)
+)
 
 type Client struct {
 	sync.Mutex
@@ -152,7 +154,6 @@ func (o *Client) Init(config *Config, policyManager policy.Manager) error {
 		mtu = 1450
 	}
 	tun, wire, err := CreateNetTUN(localAddress, mtu)
-
 	if err != nil {
 		return newError("failed to create wireguard device").Base(err)
 	}
@@ -260,7 +261,6 @@ func (o *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 	}
 
 	return nil
-
 }
 
 type remoteConnection struct {
