@@ -214,7 +214,7 @@ func (s *DNS) LookupHosts(domain string) *net.Address {
 	return nil
 }
 
-func (s *DNS) lookupIPInternal(domain string, option dns.IPOption) (result []net.IP, reterr error) {
+func (s *DNS) lookupIPInternal(domain string, option dns.IPOption) ([]net.IP, error) {
 	if domain == "" {
 		return nil, newError("empty domain name")
 	}
@@ -237,74 +237,24 @@ func (s *DNS) lookupIPInternal(domain string, option dns.IPOption) (result []net
 	}
 
 	// Name servers lookup
-	var errs []error
+	errs := []error{}
 	ctx := session.ContextWithInbound(s.ctx, &session.Inbound{Tag: s.tag})
-	done, cancel := context.WithCancel(context.Background())
-	var access sync.Mutex
-	result = nil
-	remain := 0
 	for _, client := range s.sortClients(domain) {
-		client := client
-		access.Lock()
-		remain++
-		access.Unlock()
-
-		query := func() (ret bool) {
-			if !option.FakeEnable && strings.EqualFold(client.Name(), "FakeDNS") {
-				newError("skip DNS resolution for domain ", domain, " at server ", client.Name()).AtDebug().WriteToLog()
-				return
-			}
-			ips, err := client.QueryIP(ctx, domain, option, s.disableCache)
-			access.Lock()
-			defer access.Unlock()
-
-			select {
-			case <-done.Done():
-				return
-			default:
-			}
-
-			remain--
-			if len(ips) > 0 {
-				result = ips
-				ret = true
-			} else if err != nil {
-				newError("failed to lookup ip for domain ", domain, " at server ", client.Name()).Base(err).WriteToLog()
-				errs = append(errs, err)
-				if err != context.Canceled && err != context.DeadlineExceeded && err != errExpectedIPNonMatch {
-					reterr = err
-					ret = true
-				}
-			}
-
-			if remain == 0 {
-				ret = true
-			}
-
-			if ret {
-				cancel()
-			}
-			return
+		if !option.FakeEnable && strings.EqualFold(client.Name(), "FakeDNS") {
+			newError("skip DNS resolution for domain ", domain, " at server ", client.Name()).AtDebug().WriteToLog()
+			continue
 		}
-
-		if client.concurrent {
-			go query()
-		} else {
-			if query() {
-				return result, reterr
-			}
+		ips, err := client.QueryIP(ctx, domain, option, s.disableCache)
+		if len(ips) > 0 {
+			return ips, nil
 		}
-	}
-
-	select {
-	case <-done.Done():
-	case <-ctx.Done():
-	}
-
-	cancel()
-
-	if result != nil || reterr != nil {
-		return result, reterr
+		if err != nil {
+			newError("failed to lookup ip for domain ", domain, " at server ", client.Name()).Base(err).WriteToLog()
+			errs = append(errs, err)
+		}
+		if err != context.Canceled && err != context.DeadlineExceeded && err != errExpectedIPNonMatch {
+			return nil, err
+		}
 	}
 
 	return nil, newError("returning nil for domain ", domain).Base(errors.Combine(errs...))
