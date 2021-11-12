@@ -104,7 +104,7 @@ func TestTCPRequest(t *testing.T) {
 					Email: "love@v2fly.org",
 					Account: toAccount(&Account{
 						Password:   "password",
-						CipherType: CipherType_CHACHA20_POLY1305,
+						CipherType: CipherType_CHACHA20_IETF_POLY1305,
 					}),
 				},
 			},
@@ -146,7 +146,7 @@ func TestUDPReaderWriter(t *testing.T) {
 	user := &protocol.MemoryUser{
 		Account: toAccount(&Account{
 			Password:   "test-password",
-			CipherType: CipherType_CHACHA20_POLY1305,
+			CipherType: CipherType_CHACHA20_IETF_POLY1305,
 		}),
 	}
 	cache := buf.New()
