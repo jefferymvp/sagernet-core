@@ -3,10 +3,12 @@ package dns
 import (
 	"context"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	core "github.com/v2fly/v2ray-core/v5"
+	app_dispatcher "github.com/v2fly/v2ray-core/v5/app/dispatcher"
 	"github.com/v2fly/v2ray-core/v5/app/router"
 	"github.com/v2fly/v2ray-core/v5/common/errors"
 	"github.com/v2fly/v2ray-core/v5/common/net"
@@ -57,13 +59,24 @@ func NewServer(dest net.Destination, dispatcher routing.Dispatcher, disableExpir
 			return NewTCPLocalNameServer(u, disableExpire)
 		case strings.EqualFold(u.String(), "fakedns"):
 			return NewFakeDNSServer(), nil
+		case strings.EqualFold(u.Scheme, "udp+local"):
+			dest.Network = net.Network_UDP
+			dest.Address = net.ParseAddress(u.Hostname())
+			if port := u.Port(); port != "" {
+				prt, err := strconv.ParseUint(port, 10, 16)
+				if err != nil {
+					return nil, newError("failed to parse UDPL port ", port).Base(err)
+				}
+				dest.Port = net.Port(prt)
+			}
+			return NewClassicNameServer(dest, app_dispatcher.SystemInstance, disableExpire, "UDPL"), nil
 		}
 	}
 	if dest.Network == net.Network_Unknown {
 		dest.Network = net.Network_UDP
 	}
 	if dest.Network == net.Network_UDP { // UDP classic DNS mode
-		return NewClassicNameServer(dest, dispatcher, disableExpire), nil
+		return NewClassicNameServer(dest, dispatcher, disableExpire, "UDP"), nil
 	}
 	return nil, newError("No available name server could be created from ", dest).AtWarning()
 }
