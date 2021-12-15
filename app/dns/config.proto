@@ -89,6 +89,8 @@ message Config {
   bool disableFallback = 10;
 
   bool disableFallbackIfMatch = 11;
+
+  bool disableExpire = 12;
 }
 
 
