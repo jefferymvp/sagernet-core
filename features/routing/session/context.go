@@ -137,6 +137,13 @@ func (ctx *Context) GetWifiSsid() string {
 	return ctx.Inbound.WifiSSID
 }
 
+func (ctx *Context) GetNetworkType() string {
+	if ctx.Inbound == nil {
+		return ""
+	}
+	return ctx.Inbound.NetworkType
+}
+
 func (ctx Context) GetSkipFakeDNS() bool {
 	if ctx.Inbound == nil {
 		return false

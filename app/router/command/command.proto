@@ -27,6 +27,7 @@ message RoutingContext {
   string OutboundTag = 12;
   uint32 uid = 13;
   string wifi_ssid = 14;
+  string network_type = 15;
 }
 
 // SubscribeRoutingStatsRequest subscribes to routing statistics channel if

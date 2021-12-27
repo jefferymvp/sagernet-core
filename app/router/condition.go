@@ -360,3 +360,19 @@ func NewWifiSSIDMatcher(ssid []string) *WifiSSIDMatcher {
 func (m *WifiSSIDMatcher) Apply(ctx routing.Context) bool {
 	return m.ssid[ctx.GetWifiSsid()]
 }
+
+type NetworkTypeMatcher struct {
+	networkType string
+}
+
+func NewNetworkTypeMatcher(networkType string) *NetworkTypeMatcher {
+	m := &NetworkTypeMatcher{
+		networkType: networkType,
+	}
+	return m
+}
+
+// Apply implements Condition.
+func (m *NetworkTypeMatcher) Apply(ctx routing.Context) bool {
+	return m.networkType == ctx.GetNetworkType()
+}

@@ -217,6 +217,7 @@ func parseFieldRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRu
 		Attributes   string                 `json:"attrs"`
 		UidList      *cfgcommon.UidList     `json:"uidList"`
 		WifiSSIDList *cfgcommon.StringList  `json:"ssidList"`
+		NetworkType  string                 `json:"networkType"`
 	}
 	rawFieldRule := new(RawFieldRule)
 	err := json.Unmarshal(msg, rawFieldRule)
