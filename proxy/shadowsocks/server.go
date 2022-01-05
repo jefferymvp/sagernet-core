@@ -2,9 +2,14 @@ package shadowsocks
 
 import (
 	"context"
+	"crypto/rand"
+	"io"
+	"strconv"
 	"time"
 
 	core "github.com/v2fly/v2ray-core/v5"
+	"github.com/v2fly/v2ray-core/v5/app/proxyman"
+	app_inbound "github.com/v2fly/v2ray-core/v5/app/proxyman/inbound"
 	"github.com/v2fly/v2ray-core/v5/common"
 	"github.com/v2fly/v2ray-core/v5/common/buf"
 	"github.com/v2fly/v2ray-core/v5/common/log"
@@ -15,6 +20,8 @@ import (
 	"github.com/v2fly/v2ray-core/v5/common/session"
 	"github.com/v2fly/v2ray-core/v5/common/signal"
 	"github.com/v2fly/v2ray-core/v5/common/task"
+	"github.com/v2fly/v2ray-core/v5/common/uuid"
+	"github.com/v2fly/v2ray-core/v5/features/inbound"
 	"github.com/v2fly/v2ray-core/v5/features/policy"
 	"github.com/v2fly/v2ray-core/v5/features/routing"
 	"github.com/v2fly/v2ray-core/v5/transport/internet"
@@ -25,6 +32,25 @@ type Server struct {
 	config        *ServerConfig
 	user          *protocol.MemoryUser
 	policyManager policy.Manager
+	tag           string
+	pluginTag     string
+
+	plugin         SIP003Plugin
+	pluginOverride net.Destination
+	receiverPort   int
+	stream         StreamPlugin
+	protocol       ProtocolPlugin
+}
+
+func (s *Server) Initialize(self inbound.Handler) {
+	s.tag = self.Tag()
+}
+
+func (s *Server) Close() error {
+	if s.plugin != nil {
+		return s.plugin.Close()
+	}
+	return nil
 }
 
 // NewServer create a new Shadowsocks server.
@@ -43,6 +69,69 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 		config:        config,
 		user:          mUser,
 		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
+	}
+
+	if config.Plugin != "" {
+		var plugin SIP003Plugin
+
+		pc := plugins[config.Plugin]
+		if pc != nil {
+			plugin = pc()
+		} else if pluginLoader == nil {
+			return nil, newError("plugin loader not registered")
+		} else {
+			plugin = pluginLoader(config.Plugin)
+		}
+
+		if sp, ok := plugin.(StreamPlugin); ok {
+			s.stream = sp
+
+			if err := plugin.Init("", "", "", "", config.PluginOpts, config.PluginArgs, mUser.Account.(*MemoryAccount)); err != nil {
+				return nil, newError("failed to start plugin").Base(err)
+			}
+			if pp, ok := plugin.(ProtocolPlugin); ok {
+				s.protocol = pp
+			}
+		} else {
+			port, err := net.GetFreePort()
+			if err != nil {
+				return nil, newError("failed to get free port for shadowsocks plugin").Base(err)
+			}
+
+			s.receiverPort, err = net.GetFreePort()
+			if err != nil {
+				return nil, newError("failed to get free port for shadowsocks plugin receiver").Base(err)
+			}
+
+			u := uuid.New()
+			tag := "v2ray.system.shadowsocks-inbound-plugin-receiver." + u.String()
+			s.pluginTag = tag
+
+			handler, err := app_inbound.NewAlwaysOnInboundHandlerWithProxy(ctx, tag, &proxyman.ReceiverConfig{
+				Listen:    net.NewIPOrDomain(net.LocalHostIP),
+				PortRange: net.SinglePortRange(net.Port(s.receiverPort)),
+			}, s, true)
+			if err != nil {
+				return nil, newError("failed to create shadowsocks plugin inbound").Base(err)
+			}
+
+			inboundManager := v.GetFeature(inbound.ManagerType()).(inbound.Manager)
+			if err := inboundManager.AddHandler(ctx, handler); err != nil {
+				return nil, newError("failed to add shadowsocks plugin inbound").Base(err)
+			}
+
+			s.pluginOverride = net.Destination{
+				Network: net.Network_TCP,
+				Address: net.LocalHostIP,
+				Port:    net.Port(port),
+			}
+
+			if err := plugin.Init(net.LocalHostIP.String(), strconv.Itoa(s.receiverPort), net.LocalHostIP.String(), strconv.Itoa(port), config.PluginOpts, config.PluginArgs, mUser.Account.(*MemoryAccount)); err != nil {
+				return nil, newError("failed to start plugin").Base(err)
+			}
+
+			s.plugin = plugin
+		}
 	}
 
 	return s, nil
@@ -93,6 +182,11 @@ func (s *Server) handlerUDPPayload(ctx context.Context, conn internet.Connection
 		payload := packet.Payload
 		data, err := EncodeUDPPacket(request, payload.Bytes())
 		payload.Release()
+
+		if s.protocol != nil {
+			data, err = s.protocol.EncodePacket(data)
+		}
+
 		if err != nil {
 			newError("failed to encode UDP packet").Base(err).AtWarning().WriteToLog(session.ExportIDToError(ctx))
 			return
@@ -116,7 +210,16 @@ func (s *Server) handlerUDPPayload(ctx context.Context, conn internet.Connection
 		}
 
 		for _, payload := range mpayload {
-			request, data, err := DecodeUDPPacket(s.user, payload)
+			var (
+				request *protocol.RequestHeader
+				data    *buf.Buffer
+			)
+			if s.protocol != nil {
+				payload, err = s.protocol.DecodePacket(payload)
+			}
+			if err == nil {
+				request, data, err = DecodeUDPPacket(s.user, payload)
+			}
 			if err != nil {
 				if inbound := session.InboundFromContext(ctx); inbound != nil && inbound.Source.IsValid() {
 					newError("dropping invalid UDP packet from: ", inbound.Source).Base(err).WriteToLog(session.ExportIDToError(ctx))
@@ -153,11 +256,53 @@ func (s *Server) handlerUDPPayload(ctx context.Context, conn internet.Connection
 }
 
 func (s *Server) handleConnection(ctx context.Context, conn internet.Connection, dispatcher routing.Dispatcher) error {
+	inbound := session.InboundFromContext(ctx)
+	if inbound == nil {
+		panic("no inbound metadata")
+	}
+	if s.plugin != nil {
+		if inbound.Tag != s.pluginTag {
+			dest, err := internet.Dial(ctx, s.pluginOverride, nil)
+			if err != nil {
+				return newError("failed to handle request to shadowsocks SIP003 plugin").Base(err)
+			}
+			if err := task.Run(ctx, func() error {
+				_, err := io.Copy(conn, dest)
+				return err
+			}, func() error {
+				_, err := io.Copy(dest, conn)
+				return err
+			}); err != nil {
+				return newError("connection ends").Base(err)
+			}
+			return nil
+		}
+		inbound.Tag = s.tag
+	} else if s.stream != nil {
+		conn = s.stream.StreamConn(conn)
+	}
+
 	sessionPolicy := s.policyManager.ForLevel(s.user.Level)
 	conn.SetReadDeadline(time.Now().Add(sessionPolicy.Timeouts.Handshake))
 
+	var protocolConn *ProtocolConn
+	var iv []byte
+	account := s.user.Account.(*MemoryAccount)
+	if account.Cipher.IVSize() > 0 {
+		iv = make([]byte, account.Cipher.IVSize())
+		common.Must2(rand.Read(iv))
+		if ivError := account.CheckIV(iv); ivError != nil {
+			return newError("failed to mark outgoing iv").Base(ivError)
+		}
+	}
+
+	if s.protocol != nil {
+		protocolConn = &ProtocolConn{}
+		s.protocol.ProtocolConn(protocolConn, iv)
+	}
+
 	bufferedReader := buf.BufferedReader{Reader: buf.NewReader(conn)}
-	request, bodyReader, err := ReadTCPSession(s.user, &bufferedReader)
+	request, bodyReader, err := ReadTCPSession(s.user, &bufferedReader, protocolConn)
 	if err != nil {
 		log.Record(&log.AccessMessage{
 			From:   conn.RemoteAddr(),
@@ -169,10 +314,6 @@ func (s *Server) handleConnection(ctx context.Context, conn internet.Connection,
 	}
 	conn.SetReadDeadline(time.Time{})
 
-	inbound := session.InboundFromContext(ctx)
-	if inbound == nil {
-		panic("no inbound metadata")
-	}
 	inbound.User = s.user
 
 	dest := request.Destination()
@@ -198,7 +339,7 @@ func (s *Server) handleConnection(ctx context.Context, conn internet.Connection,
 		defer timer.SetTimeout(sessionPolicy.Timeouts.UplinkOnly)
 
 		bufferedWriter := buf.NewBufferedWriter(buf.NewWriter(conn))
-		responseWriter, err := WriteTCPResponse(request, bufferedWriter)
+		responseWriter, err := WriteTCPResponse(request, bufferedWriter, iv, protocolConn)
 		if err != nil {
 			return newError("failed to write response").Base(err)
 		}

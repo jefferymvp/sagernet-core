@@ -18,6 +18,9 @@ message ServerConfig{
   string password = 2;
   string network = 3;
   v2ray.core.net.packetaddr.PacketAddrType packet_encoding = 4;
+  string plugin = 5;
+  string plugin_opts = 6;
+  repeated string plugin_args = 7;
 }
 
 message ClientConfig {
@@ -28,4 +31,7 @@ message ClientConfig {
   uint32 port = 2;
   string method = 3;
   string password = 4;
+  string plugin = 5;
+  string plugin_opts = 6;
+  repeated string plugin_args = 7;
 }
