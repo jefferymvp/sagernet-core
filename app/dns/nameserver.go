@@ -57,8 +57,6 @@ func NewServer(dest net.Destination, dispatcher routing.Dispatcher, disableExpir
 			return NewTCPNameServer(u, dispatcher, disableExpire)
 		case strings.EqualFold(u.Scheme, "tcp+local"): // DNS-over-TCP Local mode
 			return NewTCPLocalNameServer(u, disableExpire)
-		case strings.EqualFold(u.String(), "fakedns"):
-			return NewFakeDNSServer(), nil
 		case strings.EqualFold(u.Scheme, "udp+local"):
 			dest.Network = net.Network_UDP
 			dest.Address = net.ParseAddress(u.Hostname())

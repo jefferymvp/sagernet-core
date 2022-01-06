@@ -20,7 +20,6 @@ import (
 
 	// Other optional features.
 	_ "github.com/v2fly/v2ray-core/v5/app/dns"
-	_ "github.com/v2fly/v2ray-core/v5/app/dns/fakedns"
 	_ "github.com/v2fly/v2ray-core/v5/app/log"
 	_ "github.com/v2fly/v2ray-core/v5/app/policy"
 	_ "github.com/v2fly/v2ray-core/v5/app/reverse"
