@@ -11,7 +11,6 @@ import (
 type IPOption struct {
 	IPv4Enable    bool
 	IPv6Enable    bool
-	FakeEnable    bool
 	DisableExpire bool
 }
 
@@ -48,9 +47,6 @@ type ClientWithIPOption interface {
 
 	// SetQueryOption sets IPv4Enable and IPv6Enable for the DNS client.
 	SetQueryOption(isIPv4Enable, isIPv6Enable bool)
-
-	// SetFakeDNSOption sets FakeEnable option for DNS client.
-	SetFakeDNSOption(isFakeEnable bool)
 }
 
 // ClientType returns the type of Client interface. Can be used for implementing common.HasType.
