@@ -320,7 +320,6 @@ type Config struct {
 	API              *APIConfig              `json:"api"`
 	Stats            *StatsConfig            `json:"stats"`
 	Reverse          *ReverseConfig          `json:"reverse"`
-	FakeDNS          *FakeDNSConfig          `json:"fakeDns"`
 	BrowserForwarder *BrowserForwarderConfig `json:"browserForwarder"`
 	Observatory      *ObservatoryConfig      `json:"observatory"`
 	BurstObservatory *BurstObservatoryConfig `json:"burstObservatory"`
@@ -435,14 +434,6 @@ func (c *Config) Build() (*core.Config, error) {
 
 	if c.Reverse != nil {
 		r, err := c.Reverse.Build()
-		if err != nil {
-			return nil, err
-		}
-		config.App = append(config.App, serial.ToTypedMessage(r))
-	}
-
-	if c.FakeDNS != nil {
-		r, err := c.FakeDNS.Build()
 		if err != nil {
 			return nil, err
 		}

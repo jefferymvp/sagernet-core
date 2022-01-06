@@ -233,13 +233,6 @@ func (h *Handler) handleIPQuery(id uint16, qType dnsmessage.Type, domain string,
 
 	var ttl uint32 = 600
 
-	// Do NOT skip FakeDNS
-	if c, ok := h.client.(dns.ClientWithIPOption); ok {
-		c.SetFakeDNSOption(true)
-	} else {
-		newError("dns.Client doesn't implement ClientWithIPOption")
-	}
-
 	switch qType {
 	case dnsmessage.TypeA:
 		ips, err = h.ipv4Lookup.LookupIPv4(domain)

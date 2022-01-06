@@ -71,19 +71,16 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 		ipOption = &dns.IPOption{
 			IPv4Enable: true,
 			IPv6Enable: true,
-			FakeEnable: false,
 		}
 	case QueryStrategy_USE_IP4:
 		ipOption = &dns.IPOption{
 			IPv4Enable: true,
 			IPv6Enable: false,
-			FakeEnable: false,
 		}
 	case QueryStrategy_USE_IP6:
 		ipOption = &dns.IPOption{
 			IPv4Enable: false,
 			IPv6Enable: true,
-			FakeEnable: false,
 		}
 	}
 	ipOption.DisableExpire = config.DisableExpire
@@ -227,10 +224,6 @@ func (s *DNS) lookupIPInternal(domain string, option dns.IPOption) ([]net.IP, er
 	errs := []error{}
 	ctx := session.ContextWithInbound(s.ctx, &session.Inbound{Tag: s.tag})
 	for _, client := range s.sortClients(domain) {
-		if !option.FakeEnable && strings.EqualFold(client.Name(), "FakeDNS") {
-			newError("skip DNS resolution for domain ", domain, " at server ", client.Name()).AtDebug().WriteToLog()
-			continue
-		}
 		ips, err := client.QueryIP(ctx, domain, option, s.disableCache)
 		if len(ips) > 0 {
 			return ips, nil
@@ -256,11 +249,6 @@ func (s *DNS) GetIPOption() *dns.IPOption {
 func (s *DNS) SetQueryOption(isIPv4Enable, isIPv6Enable bool) {
 	s.ipOption.IPv4Enable = isIPv4Enable
 	s.ipOption.IPv6Enable = isIPv6Enable
-}
-
-// SetFakeDNSOption implements ClientWithIPOption.
-func (s *DNS) SetFakeDNSOption(isFakeEnable bool) {
-	s.ipOption.FakeEnable = isFakeEnable
 }
 
 func (s *DNS) sortClients(domain string) []*Client {
