@@ -9,8 +9,10 @@ import (
 	"github.com/v2fly/v2ray-core/v5/common/session"
 )
 
-var effectiveSystemDialer SystemDialer = &DefaultSystemDialer{}
-var effectiveSystemDNSDialer SystemDialer = &DefaultSystemDialer{}
+var (
+	effectiveSystemDialer    SystemDialer = &DefaultSystemDialer{}
+	effectiveSystemDNSDialer SystemDialer = &DefaultSystemDialer{}
+)
 
 type SystemDialer interface {
 	Dial(ctx context.Context, source net.Address, destination net.Destination, sockopt *SocketConfig) (net.Conn, error)
@@ -135,6 +137,14 @@ func (c *PacketConnWrapper) Write(p []byte) (int, error) {
 func (c *PacketConnWrapper) Read(p []byte) (int, error) {
 	n, _, err := c.Conn.ReadFrom(p)
 	return n, err
+}
+
+func (c *PacketConnWrapper) WriteTo(p []byte, d net.Addr) (int, error) {
+	return c.Conn.WriteTo(p, d)
+}
+
+func (c *PacketConnWrapper) ReadFrom(p []byte) (int, net.Addr, error) {
+	return c.Conn.ReadFrom(p)
 }
 
 func (c *PacketConnWrapper) SetDeadline(t time.Time) error {

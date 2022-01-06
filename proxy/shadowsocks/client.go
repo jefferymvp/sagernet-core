@@ -249,11 +249,11 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 	}
 
 	if request.Command == protocol.RequestCommandUDP {
-		writer := &buf.SequentialWriter{Writer: &UDPWriter{
+		writer := &UDPWriter{
 			Writer:  conn,
 			Request: request,
 			Plugin:  c.protocol,
-		}}
+		}
 
 		requestDone := func() error {
 			defer timer.SetTimeout(sessionPolicy.Timeouts.DownlinkOnly)

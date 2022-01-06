@@ -52,9 +52,9 @@ func NewTCPNameServer(url *url.URL, dispatcher routing.Dispatcher, disableExpire
 			return nil, err
 		}
 
-		return net.NewConnection(
-			net.ConnectionInputMulti(link.Writer),
-			net.ConnectionOutputMulti(link.Reader),
+		return buf.NewConnection(
+			buf.ConnectionInputMulti(link.Writer),
+			buf.ConnectionOutputMulti(link.Reader),
 		), nil
 	}
 	s.disableExpire = disableExpire

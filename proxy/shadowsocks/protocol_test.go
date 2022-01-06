@@ -4,12 +4,11 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/v2fly/v2ray-core/v5/common/errors"
-
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/v2fly/v2ray-core/v5/common"
 	"github.com/v2fly/v2ray-core/v5/common/buf"
+	"github.com/v2fly/v2ray-core/v5/common/errors"
 	"github.com/v2fly/v2ray-core/v5/common/net"
 	"github.com/v2fly/v2ray-core/v5/common/protocol"
 	. "github.com/v2fly/v2ray-core/v5/proxy/shadowsocks"
@@ -165,7 +164,7 @@ func TestUDPReaderWriter(t *testing.T) {
 	cache := buf.New()
 	defer cache.Release()
 
-	writer := &buf.SequentialWriter{Writer: &UDPWriter{
+	writer := &UDPWriter{
 		Writer: cache,
 		Request: &protocol.RequestHeader{
 			Version: Version,
@@ -173,7 +172,7 @@ func TestUDPReaderWriter(t *testing.T) {
 			Port:    123,
 			User:    user,
 		},
-	}}
+	}
 
 	reader := &UDPReader{
 		Reader: cache,
