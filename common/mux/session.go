@@ -142,6 +142,8 @@ type Session struct {
 	parent       *SessionManager
 	ID           uint16
 	transferType protocol.TransferType
+	endpoint     net.Destination
+	sendEndpoint int
 }
 
 // Close closes all resources associated with this session.
