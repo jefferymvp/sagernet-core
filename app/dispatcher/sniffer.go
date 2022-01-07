@@ -6,6 +6,7 @@ import (
 	"github.com/v2fly/v2ray-core/v5/common"
 	"github.com/v2fly/v2ray-core/v5/common/net"
 	"github.com/v2fly/v2ray-core/v5/common/protocol/bittorrent"
+	"github.com/v2fly/v2ray-core/v5/common/protocol/dns"
 	"github.com/v2fly/v2ray-core/v5/common/protocol/http"
 	"github.com/v2fly/v2ray-core/v5/common/protocol/quic"
 	"github.com/v2fly/v2ray-core/v5/common/protocol/tls"
@@ -39,6 +40,8 @@ func NewSniffer(ctx context.Context) *Sniffer {
 			{func(c context.Context, b []byte) (SniffResult, error) { return quic.SniffQUIC(b) }, false, net.Network_UDP},
 			{func(c context.Context, b []byte) (SniffResult, error) { return bittorrent.SniffBittorrent(b) }, false, net.Network_TCP},
 			{func(c context.Context, b []byte) (SniffResult, error) { return bittorrent.SniffUTP(b) }, false, net.Network_UDP},
+			{func(c context.Context, b []byte) (SniffResult, error) { return dns.SniffDNS(b) }, false, net.Network_UDP},
+			{func(c context.Context, b []byte) (SniffResult, error) { return dns.SniffTCPDNS(b) }, false, net.Network_TCP},
 		},
 	}
 	return ret
@@ -57,33 +60,6 @@ func (s *Sniffer) Sniff(c context.Context, payload []byte, network net.Network) 
 			continue
 		}
 		result, err := s(c, payload)
-		if err == common.ErrNoClue {
-			pendingSniffer = append(pendingSniffer, si)
-			continue
-		}
-
-		if err == nil && result != nil {
-			return result, nil
-		}
-	}
-
-	if len(pendingSniffer) > 0 {
-		s.sniffer = pendingSniffer
-		return nil, common.ErrNoClue
-	}
-
-	return nil, errUnknownContent
-}
-
-func (s *Sniffer) SniffMetadata(c context.Context) (SniffResult, error) {
-	var pendingSniffer []protocolSnifferWithMetadata
-	for _, si := range s.sniffer {
-		s := si.protocolSniffer
-		if !si.metadataSniffer {
-			pendingSniffer = append(pendingSniffer, si)
-			continue
-		}
-		result, err := s(c, nil)
 		if err == common.ErrNoClue {
 			pendingSniffer = append(pendingSniffer, si)
 			continue
