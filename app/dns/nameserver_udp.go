@@ -28,18 +28,19 @@ import (
 // ClassicNameServer implemented traditional UDP DNS.
 type ClassicNameServer struct {
 	sync.RWMutex
-	name      string
-	address   net.Destination
-	ips       map[string]record
-	requests  map[uint16]dnsRequest
-	pub       *pubsub.Service
-	udpServer udp.DispatcherI
-	cleanup   *task.Periodic
-	reqID     uint32
+	name          string
+	address       net.Destination
+	ips           map[string]record
+	requests      map[uint16]dnsRequest
+	pub           *pubsub.Service
+	udpServer     udp.DispatcherI
+	cleanup       *task.Periodic
+	reqID         uint32
+	disableExpire bool
 }
 
 // NewClassicNameServer creates udp server object for remote resolving.
-func NewClassicNameServer(address net.Destination, dispatcher routing.Dispatcher) *ClassicNameServer {
+func NewClassicNameServer(address net.Destination, dispatcher routing.Dispatcher, disableExpire bool) *ClassicNameServer {
 	// default to 53 if unspecific
 	if address.Port == 0 {
 		address.Port = net.Port(53)
@@ -57,6 +58,7 @@ func NewClassicNameServer(address net.Destination, dispatcher routing.Dispatcher
 		Execute:  s.Cleanup,
 	}
 	s.udpServer = udp.NewSplitDispatcher(dispatcher, s.HandleResponse)
+	s.disableExpire = disableExpire
 	newError("DNS: created UDP client initialized for ", address.NetAddr()).AtInfo().WriteToLog()
 	return s
 }
@@ -76,18 +78,20 @@ func (s *ClassicNameServer) Cleanup() error {
 		return newError(s.name, " nothing to do. stopping...")
 	}
 
-	for domain, record := range s.ips {
-		if record.A != nil && record.A.Expire.Before(now) {
-			record.A = nil
-		}
-		if record.AAAA != nil && record.AAAA.Expire.Before(now) {
-			record.AAAA = nil
-		}
+	if !s.disableExpire {
+		for domain, record := range s.ips {
+			if record.A != nil && record.A.Expire.Before(now) {
+				record.A = nil
+			}
+			if record.AAAA != nil && record.AAAA.Expire.Before(now) {
+				record.AAAA = nil
+			}
 
-		if record.A == nil && record.AAAA == nil {
-			delete(s.ips, domain)
-		} else {
-			s.ips[domain] = record
+			if record.A == nil && record.AAAA == nil {
+				delete(s.ips, domain)
+			} else {
+				s.ips[domain] = record
+			}
 		}
 	}
 
@@ -217,7 +221,7 @@ func (s *ClassicNameServer) findIPsForDomain(domain string, option dns_feature.I
 	var ips []net.Address
 	var lastErr error
 	if option.IPv4Enable {
-		a, err := record.A.getIPs()
+		a, err := record.A.getIPs(option.DisableExpire)
 		if err != nil {
 			lastErr = err
 		}
@@ -225,7 +229,7 @@ func (s *ClassicNameServer) findIPsForDomain(domain string, option dns_feature.I
 	}
 
 	if option.IPv6Enable {
-		aaaa, err := record.AAAA.getIPs()
+		aaaa, err := record.AAAA.getIPs(option.DisableExpire)
 		if err != nil {
 			lastErr = err
 		}
