@@ -38,6 +38,8 @@ type DNS struct {
 	ctx                    context.Context
 	domainMatcher          strmatcher.IndexMatcher
 	matcherInfos           []DomainMatcherInfo
+	continueOnError        bool
+	disableTimeout         bool
 }
 
 // DomainMatcherInfo contains information attached to index returned by Server.domainMatcher
@@ -84,6 +86,7 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 			FakeEnable: false,
 		}
 	}
+	ipOption.DisableExpire = config.DisableExpire
 
 	hosts, err := NewStaticHosts(config.StaticHosts, config.Hosts)
 	if err != nil {
@@ -103,7 +106,7 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 
 	for _, endpoint := range config.NameServers {
 		features.PrintDeprecatedFeatureWarning("simple DNS server")
-		client, err := NewSimpleClient(ctx, endpoint, clientIP)
+		client, err := NewSimpleClient(ctx, endpoint, clientIP, config.DisableExpire)
 		if err != nil {
 			return nil, newError("failed to create client").Base(err)
 		}
@@ -126,7 +129,7 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 		case net.IPv4len, net.IPv6len:
 			myClientIP = net.IP(ns.ClientIp)
 		}
-		client, err := NewClient(ctx, ns, myClientIP, geoipContainer, &matcherInfos, updateDomain)
+		client, err := NewClient(ctx, ns, myClientIP, geoipContainer, &matcherInfos, updateDomain, config.DisableExpire)
 		if err != nil {
 			return nil, newError("failed to create client").Base(err)
 		}
@@ -236,7 +239,7 @@ func (s *DNS) lookupIPInternal(domain string, option dns.IPOption) ([]net.IP, er
 			newError("failed to lookup ip for domain ", domain, " at server ", client.Name()).Base(err).WriteToLog()
 			errs = append(errs, err)
 		}
-		if err != context.Canceled && err != context.DeadlineExceeded && err != errExpectedIPNonMatch {
+		if err != context.Canceled && err != context.DeadlineExceeded && err != errExpectedIPNonMatch && !s.continueOnError {
 			return nil, err
 		}
 	}
