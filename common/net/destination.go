@@ -118,6 +118,12 @@ func (d Destination) IsValid() bool {
 	return d.Network != Network_Unknown
 }
 
+func (d Destination) IPAddr() *net.IPAddr {
+	return &net.IPAddr{
+		IP: d.Address.IP(),
+	}
+}
+
 func (d Destination) TCPAddr() *net.TCPAddr {
 	return &net.TCPAddr{
 		IP:   d.Address.IP(),
