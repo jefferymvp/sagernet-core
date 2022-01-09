@@ -39,7 +39,8 @@ require (
 	inet.af/netaddr v0.0.0-20211027220019-c74959edd3b6
 )
 
-replace gvisor.dev/gvisor => github.com/sagernet/gvisor v0.0.0-20211227140739-33ed11d8e732
+// https://github.com/google/gvisor/releases/tag/release-20220103.0
+replace gvisor.dev/gvisor => github.com/google/gvisor v0.0.0-20220101053744-1d5a116c5b1d
 
 require (
 	github.com/cheekybits/genny v1.0.0 // indirect
