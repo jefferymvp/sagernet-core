@@ -225,6 +225,23 @@ func (a *Account) getCipher() (Cipher, error) {
 				return rc4.NewCipher(h.Sum(nil))
 			},
 		}, nil
+	case CipherType_RC4_MD5_6:
+		return &StreamCipher{
+			KeyBytes: 16,
+			IVBytes:  6,
+			EncryptCreator: func(key []byte, iv []byte) (cipher.Stream, error) {
+				h := md5.New()
+				h.Write(key)
+				h.Write(iv)
+				return rc4.NewCipher(h.Sum(nil))
+			},
+			DecryptCreator: func(key []byte, iv []byte) (cipher.Stream, error) {
+				h := md5.New()
+				h.Write(key)
+				h.Write(iv)
+				return rc4.NewCipher(h.Sum(nil))
+			},
+		}, nil
 	case CipherType_BF_CFB:
 		return &StreamCipher{
 			KeyBytes:       16,
