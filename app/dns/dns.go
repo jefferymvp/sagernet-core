@@ -451,7 +451,6 @@ func (c *Client) QueryRaw(ctx context.Context, buffer *buf.Buffer) (*buf.Buffer,
 		switch server.transport.Type() {
 		case dns.TransportTypeDefault:
 			message.ID = c.nextRequestId()
-			r.queryType.Store(message.ID, message.Questions[0].Type)
 			c.callbacks.Store(message.ID, r)
 			reqIds = append(reqIds, message.ID)
 			go func() {
@@ -482,7 +481,6 @@ func (c *Client) QueryRaw(ctx context.Context, buffer *buf.Buffer) (*buf.Buffer,
 				cancel()
 				continue
 			}
-			r.queryType.Store(message.ID, message.Questions[0].Type)
 			c.callbacks.Store(message.ID, r)
 			reqIds = append(reqIds, message.ID)
 			go func() {
@@ -716,8 +714,6 @@ func (c *Client) writeBack(server *Server, message *dnsmessage.Message) {
 	}
 
 	d := callbackI.(*serverQueryCallback)
-	typeI, _ := d.queryType.Load(message.ID)
-	queryType := typeI.(dnsmessage.Type)
 
 	if common.Done(d.ctx) {
 		return
@@ -750,6 +746,9 @@ func (c *Client) writeBack(server *Server, message *dnsmessage.Message) {
 		d.cancel()
 		return
 	}
+
+	typeI, _ := d.queryType.Load(message.ID)
+	queryType := typeI.(dnsmessage.Type)
 
 	now := time.Now()
 
