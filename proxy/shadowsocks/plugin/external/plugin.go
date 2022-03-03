@@ -5,10 +5,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/v2fly/v2ray-core/v5/common/errors"
+	"github.com/v2fly/v2ray-core/v5/common/platform"
 	"github.com/v2fly/v2ray-core/v5/common/signal/done"
 	"github.com/v2fly/v2ray-core/v5/proxy/shadowsocks"
 )
@@ -61,8 +61,6 @@ func (p *Plugin) Init(localHost string, localPort string, remoteHost string, rem
 		return err
 	}
 
-	go p.waitPlugin()
-
 	return nil
 }
 
@@ -86,12 +84,15 @@ func (p *Plugin) startPlugin(oldProc *exec.Cmd) *errors.Error {
 		return newError("failed to start shadowsocks plugin ", proc.Path).Base(err)
 	}
 
-	time.Sleep(time.Millisecond * 100)
-
-	err = proc.Process.Signal(syscall.Signal(0))
-	if err != nil && err != syscall.EPERM {
-		return newError("shadowsocks plugin ", proc.Path, " exits too fast").Base(err)
-	}
+	go func() {
+		time.Sleep(time.Second)
+		err = platform.CheckChildProcess(proc.Process)
+		if err != nil {
+			newError("shadowsocks plugin ", proc.Path, " exits too fast").Base(err).WriteToLog()
+			return
+		}
+		go p.waitPlugin()
+	}()
 
 	p.pluginProcess = proc
 
