@@ -3,9 +3,6 @@ package shadowsocks
 import (
 	"context"
 	"crypto/rand"
-	"strconv"
-	"time"
-
 	core "github.com/v2fly/v2ray-core/v5"
 	"github.com/v2fly/v2ray-core/v5/common"
 	"github.com/v2fly/v2ray-core/v5/common/buf"
@@ -20,6 +17,7 @@ import (
 	"github.com/v2fly/v2ray-core/v5/transport"
 	"github.com/v2fly/v2ray-core/v5/transport/internet"
 	"github.com/v2fly/v2ray-core/v5/transport/internet/udp"
+	"strconv"
 )
 
 // Client is a inbound handler for Shadowsocks protocol
@@ -219,13 +217,9 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 		requestDone := func() error {
 			defer timer.SetTimeout(sessionPolicy.Timeouts.DownlinkOnly)
 			bufferedWriter := buf.NewBufferedWriter(buf.NewWriter(conn))
-			bodyWriter, err := WriteTCPRequest(request, bufferedWriter, iv, protocolConn)
+			bodyWriter, err := WriteTCPRequest(request, bufferedWriter, iv, link.Reader, protocolConn)
 			if err != nil {
 				return newError("failed to write request").Base(err)
-			}
-
-			if err = buf.CopyOnceTimeout(link.Reader, bodyWriter, time.Millisecond*100); err != nil && err != buf.ErrNotTimeoutReader && err != buf.ErrReadTimeout {
-				return newError("failed to write A request payload").Base(err).AtWarning()
 			}
 
 			if err := bufferedWriter.SetBuffered(false); err != nil {
@@ -238,7 +232,7 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 		responseDone := func() error {
 			defer timer.SetTimeout(sessionPolicy.Timeouts.UplinkOnly)
 
-			responseReader, err := ReadTCPResponse(user, conn, protocolConn)
+			responseReader, err := ReadTCPResponse(user, conn, iv, protocolConn)
 			if err != nil {
 				return err
 			}

@@ -302,7 +302,7 @@ func (s *Server) handleConnection(ctx context.Context, conn internet.Connection,
 	}
 
 	bufferedReader := buf.BufferedReader{Reader: buf.NewReader(conn)}
-	request, bodyReader, err := ReadTCPSession(s.user, &bufferedReader, protocolConn)
+	request, requestIV, bodyReader, err := ReadTCPSession(s.user, &bufferedReader, protocolConn)
 	if err != nil {
 		log.Record(&log.AccessMessage{
 			From:   conn.RemoteAddr(),
@@ -339,7 +339,7 @@ func (s *Server) handleConnection(ctx context.Context, conn internet.Connection,
 		defer timer.SetTimeout(sessionPolicy.Timeouts.UplinkOnly)
 
 		bufferedWriter := buf.NewBufferedWriter(buf.NewWriter(conn))
-		responseWriter, err := WriteTCPResponse(request, bufferedWriter, iv, protocolConn)
+		responseWriter, err := WriteTCPResponse(request, bufferedWriter, requestIV, iv, protocolConn)
 		if err != nil {
 			return newError("failed to write response").Base(err)
 		}
