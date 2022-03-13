@@ -227,7 +227,7 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			bufferedWriter := buf.NewBufferedWriter(buf.NewWriter(conn))
 			request.Address = net.DomainAddress(udpovertcp.UOTMagicAddress)
 			request.Port = 0
-			bodyWriter, err := WriteTCPRequest(request, bufferedWriter, iv, protocolConn)
+			bodyWriter, err := WriteTCPRequest(request, bufferedWriter, iv, nil, protocolConn)
 			if err != nil {
 				return newError("failed to write request").Base(err)
 			}
@@ -249,7 +249,7 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			connReader := &buf.BufferedReader{
 				Reader: buf.NewReader(conn),
 			}
-			responseReader, err := ReadTCPResponse(user, connReader, protocolConn)
+			responseReader, err := ReadTCPResponse(user, connReader, iv, protocolConn)
 			if err != nil {
 				return err
 			}
@@ -271,13 +271,9 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 		requestDone := func() error {
 			defer timer.SetTimeout(sessionPolicy.Timeouts.DownlinkOnly)
 			bufferedWriter := buf.NewBufferedWriter(buf.NewWriter(conn))
-			bodyWriter, err := WriteTCPRequest(request, bufferedWriter, iv, protocolConn)
+			bodyWriter, err := WriteTCPRequest(request, bufferedWriter, iv, link.Reader, protocolConn)
 			if err != nil {
 				return newError("failed to write request").Base(err)
-			}
-
-			if err = buf.CopyOnceTimeout(link.Reader, bodyWriter, time.Millisecond*100); err != nil && err != buf.ErrNotTimeoutReader && err != buf.ErrReadTimeout {
-				return newError("failed to write A request payload").Base(err).AtWarning()
 			}
 
 			if err := bufferedWriter.SetBuffered(false); err != nil {
@@ -293,7 +289,7 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			connReader := &buf.BufferedReader{
 				Reader: buf.NewReader(conn),
 			}
-			responseReader, err := ReadTCPResponse(user, connReader, protocolConn)
+			responseReader, err := ReadTCPResponse(user, connReader, iv, protocolConn)
 			if err != nil {
 				return err
 			}
@@ -310,10 +306,13 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 	}
 
 	if request.Command == protocol.RequestCommandUDP {
+		us := newUDPSession(false)
+
 		writer := &UDPWriter{
 			Writer:  conn,
 			Request: request,
 			Plugin:  c.protocol,
+			session: us,
 		}
 
 		requestDone := func() error {
