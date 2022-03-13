@@ -8,6 +8,7 @@ import (
 	"crypto/md5"
 	"crypto/rc4"
 	"crypto/sha1"
+	"encoding/base64"
 	"io"
 	"strings"
 
@@ -124,11 +125,6 @@ func (a *Account) getCipher() (Cipher, error) {
 		return &AEAD2022Cipher{
 			KeyBytes:        32,
 			AEADAuthCreator: createChaCha20Poly1305,
-		}, nil
-	case CipherType_BLAKE3_XCHACHA20_POLY1305_2022:
-		return &AEAD2022Cipher{
-			KeyBytes:        32,
-			AEADAuthCreator: createXChaCha20Poly1305,
 		}, nil
 	case CipherType_NONE:
 		return &NoneCipher{}, nil
@@ -380,9 +376,21 @@ func (a *Account) AsAccount() (protocol.Account, error) {
 	if err != nil {
 		return nil, newError("failed to get cipher").Base(err)
 	}
+	var key []byte
+	if !c.Family().IsSpec2022() {
+		key = passwordToCipherKey([]byte(a.Password), c.KeySize())
+	} else {
+		key, err = base64.StdEncoding.DecodeString(a.Password)
+		if err != nil {
+			return nil, newError("failed to decode password as key").Base(err)
+		}
+		if len(key) != 32 {
+			return nil, newError("bad key")
+		}
+	}
 	return &MemoryAccount{
 		Cipher: c,
-		Key:    passwordToCipherKey([]byte(a.Password), c.KeySize()),
+		Key:    key,
 		replayFilter: func() antireplay.GeneralizedReplayFilter {
 			if c.Family().IsSpec2022() {
 				return antireplay.NewReplayFilter(30)
