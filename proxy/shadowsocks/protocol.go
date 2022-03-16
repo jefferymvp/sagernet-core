@@ -400,7 +400,7 @@ func DecodeUDPPacket(user *protocol.MemoryUser, payload *buf.Buffer, plugin Prot
 	}
 
 	if cipherFamily.IsSpec2022() {
-		//TODO: check header
+		// TODO: check header
 		_, err := payload.ReadBytes(25)
 		if err != nil {
 			return nil, nil, err

@@ -3,13 +3,15 @@ package shadowsocks
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"io"
+	"math/rand"
+	"sync/atomic"
+
+	"lukechampine.com/blake3"
+
 	"github.com/v2fly/v2ray-core/v5/common/buf"
 	"github.com/v2fly/v2ray-core/v5/common/crypto"
 	"github.com/v2fly/v2ray-core/v5/common/protocol"
-	"io"
-	"lukechampine.com/blake3"
-	"math/rand"
-	"sync/atomic"
 )
 
 const (
