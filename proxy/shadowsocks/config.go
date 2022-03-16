@@ -59,6 +59,12 @@ func (a *MemoryAccount) CheckIV(iv []byte) error {
 	return newError("IV is not unique")
 }
 
+func createAes(key []byte) cipher.Block {
+	block, err := aes.NewCipher(key)
+	common.Must(err)
+	return block
+}
+
 func createAesGcm(key []byte) cipher.AEAD {
 	block, err := aes.NewCipher(key)
 	common.Must(err)
@@ -115,16 +121,19 @@ func (a *Account) getCipher() (Cipher, error) {
 		return &AEAD2022Cipher{
 			KeyBytes:        16,
 			AEADAuthCreator: createAesGcm,
+			UDPBlockCreator: createAes,
 		}, nil
 	case CipherType_BLAKE3_AES_256_GCM_2022:
 		return &AEAD2022Cipher{
 			KeyBytes:        32,
 			AEADAuthCreator: createAesGcm,
+			UDPBlockCreator: createAes,
 		}, nil
 	case CipherType_BLAKE3_CHACHA20_POLY1305_2022:
 		return &AEAD2022Cipher{
-			KeyBytes:        32,
-			AEADAuthCreator: createChaCha20Poly1305,
+			KeyBytes:           32,
+			AEADAuthCreator:    createChaCha20Poly1305,
+			UDPAEADAuthCreator: createXChaCha20Poly1305,
 		}, nil
 	case CipherType_NONE:
 		return &NoneCipher{}, nil
@@ -411,14 +420,15 @@ const (
 	CipherFamilyAEAD
 	CipherFamilyStream
 	CipherFamilyAEADSpec2022
+	CipherFamilyAEADSpec2022UDPBlock
 )
 
 func (f CipherFamily) IsAEAD() bool {
-	return f == CipherFamilyAEAD || f == CipherFamilyAEADSpec2022
+	return f == CipherFamilyAEAD || f == CipherFamilyAEADSpec2022 || f == CipherFamilyAEADSpec2022UDPBlock
 }
 
 func (f CipherFamily) IsSpec2022() bool {
-	return f == CipherFamilyAEADSpec2022
+	return f == CipherFamilyAEADSpec2022 || f == CipherFamilyAEADSpec2022UDPBlock
 }
 
 // Cipher is an interface for all Shadowsocks ciphers.

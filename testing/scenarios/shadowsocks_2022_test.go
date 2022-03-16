@@ -13,6 +13,7 @@ import (
 	"github.com/v2fly/v2ray-core/v5/proxy/freedom"
 	"github.com/v2fly/v2ray-core/v5/proxy/shadowsocks"
 	"github.com/v2fly/v2ray-core/v5/testing/servers/tcp"
+	"github.com/v2fly/v2ray-core/v5/testing/servers/udp"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/anypb"
 	"testing"
@@ -28,7 +29,7 @@ func TestShadowsocksBlake3ChaCha20Poly1305TCP(t *testing.T) {
 	defer tcpServer.Close()
 
 	account := serial.ToTypedMessage(&shadowsocks.Account{
-		Password:   "shadowsocks-password",
+		Password:   "UVTughS+Q5PgnUQaeg4KD+DYv0wn+eKqCdwjtsGzKBA=",
 		CipherType: shadowsocks.CipherType_BLAKE3_CHACHA20_POLY1305_2022,
 	})
 
@@ -112,7 +113,7 @@ func TestShadowsocksBlake3AES256GCMTCP(t *testing.T) {
 	defer tcpServer.Close()
 
 	account := serial.ToTypedMessage(&shadowsocks.Account{
-		Password:   "shadowsocks-password",
+		Password:   "UVTughS+Q5PgnUQaeg4KD+DYv0wn+eKqCdwjtsGzKBA=",
 		CipherType: shadowsocks.CipherType_BLAKE3_AES_256_GCM_2022,
 	})
 
@@ -193,6 +194,100 @@ func TestShadowsocksBlake3AES256GCMTCP(t *testing.T) {
 		errGroup.Go(testTCPConn(clientPort, 10240*1024, time.Second*20))
 	}
 
+	if err := errGroup.Wait(); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestShadowsocksBlake3AES128GCMUDP(t *testing.T) {
+	udpServer := udp.Server{
+		MsgProcessor: xor,
+	}
+	dest, err := udpServer.Start()
+	common.Must(err)
+	defer udpServer.Close()
+
+	account := serial.ToTypedMessage(&shadowsocks.Account{
+		Password:   "UVTughS+Q5PgnUQaeg4KD+DYv0wn+eKqCdwjtsGzKBA=",
+		CipherType: shadowsocks.CipherType_BLAKE3_AES_128_GCM_2022,
+	})
+
+	serverPort := udp.PickPort()
+	serverConfig := &core.Config{
+		App: []*anypb.Any{
+			serial.ToTypedMessage(&log.Config{
+				Error: &log.LogSpecification{Level: clog.Severity_Debug, Type: log.LogType_Console},
+			}),
+		},
+		Inbound: []*core.InboundHandlerConfig{
+			{
+				ReceiverSettings: serial.ToTypedMessage(&proxyman.ReceiverConfig{
+					PortRange: net.SinglePortRange(serverPort),
+					Listen:    net.NewIPOrDomain(net.LocalHostIP),
+				}),
+				ProxySettings: serial.ToTypedMessage(&shadowsocks.ServerConfig{
+					User: &protocol.User{
+						Account: account,
+						Level:   1,
+					},
+					Network: []net.Network{net.Network_UDP},
+				}),
+			},
+		},
+		Outbound: []*core.OutboundHandlerConfig{
+			{
+				ProxySettings: serial.ToTypedMessage(&freedom.Config{}),
+			},
+		},
+	}
+
+	clientPort := udp.PickPort()
+	clientConfig := &core.Config{
+		App: []*anypb.Any{
+			serial.ToTypedMessage(&log.Config{
+				Error: &log.LogSpecification{Level: clog.Severity_Debug, Type: log.LogType_Console},
+			}),
+		},
+		Inbound: []*core.InboundHandlerConfig{
+			{
+				ReceiverSettings: serial.ToTypedMessage(&proxyman.ReceiverConfig{
+					PortRange: net.SinglePortRange(clientPort),
+					Listen:    net.NewIPOrDomain(net.LocalHostIP),
+				}),
+				ProxySettings: serial.ToTypedMessage(&dokodemo.Config{
+					Address:  net.NewIPOrDomain(dest.Address),
+					Port:     uint32(dest.Port),
+					Networks: []net.Network{net.Network_UDP},
+				}),
+			},
+		},
+		Outbound: []*core.OutboundHandlerConfig{
+			{
+				ProxySettings: serial.ToTypedMessage(&shadowsocks.ClientConfig{
+					Server: []*protocol.ServerEndpoint{
+						{
+							Address: net.NewIPOrDomain(net.LocalHostIP),
+							Port:    uint32(serverPort),
+							User: []*protocol.User{
+								{
+									Account: account,
+								},
+							},
+						},
+					},
+				}),
+			},
+		},
+	}
+
+	servers, err := InitializeServerConfigs(serverConfig, clientConfig)
+	common.Must(err)
+	defer CloseAllServers(servers)
+
+	var errGroup errgroup.Group
+	for i := 0; i < 10; i++ {
+		errGroup.Go(testUDPConn(clientPort, 1024, time.Second*5))
+	}
 	if err := errGroup.Wait(); err != nil {
 		t.Error(err)
 	}

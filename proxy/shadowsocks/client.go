@@ -249,10 +249,13 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 	}
 
 	if request.Command == protocol.RequestCommandUDP {
+		us := newUDPSession(false)
+
 		writer := &UDPWriter{
 			Writer:  conn,
 			Request: request,
 			Plugin:  c.protocol,
+			session: us,
 		}
 
 		requestDone := func() error {

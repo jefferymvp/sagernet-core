@@ -40,7 +40,8 @@ func ReadTCPSession(user *protocol.MemoryUser, reader io.Reader, conn *ProtocolC
 	var iv []byte
 	var drainer drain.Drainer
 
-	if !account.Cipher.Family().IsSpec2022() {
+	cipherFamily := account.Cipher.Family()
+	if !cipherFamily.IsSpec2022() {
 		hashkdf := hmac.New(sha256.New, []byte("SSBSKDF"))
 		hashkdf.Write(account.Key)
 
@@ -95,12 +96,12 @@ func ReadTCPSession(user *protocol.MemoryUser, reader io.Reader, conn *ProtocolC
 
 	buffer.Clear()
 
-	if account.Cipher.Family().IsSpec2022() {
+	if cipherFamily.IsSpec2022() {
 		_, err = buffer.ReadFullFrom(br, MinRequestHeaderSize)
 		if err != nil {
 			return nil, nil, nil, newError("failed to read response header").Base(err)
 		}
-		if buffer.Byte(0) != HeaderTypeClientStream {
+		if buffer.Byte(0) != HeaderTypeClient {
 			return nil, nil, nil, newError("bad request type")
 		}
 		epoch := int64(binary.BigEndian.Uint64(buffer.BytesRange(1, 1+8)))
@@ -134,7 +135,7 @@ func ReadTCPSession(user *protocol.MemoryUser, reader io.Reader, conn *ProtocolC
 		return nil, nil, nil, drain.WithError(drainer, reader, newError("invalid remote address."))
 	}
 
-	if account.Cipher.Family().IsSpec2022() {
+	if cipherFamily.IsSpec2022() {
 		var paddingLen uint16
 		err = binary.Read(br, binary.BigEndian, &paddingLen)
 		if err != nil {
@@ -155,6 +156,7 @@ func ReadTCPSession(user *protocol.MemoryUser, reader io.Reader, conn *ProtocolC
 func WriteTCPRequest(request *protocol.RequestHeader, writer io.Writer, iv []byte, reader buf.Reader, conn *ProtocolConn) (buf.Writer, error) {
 	user := request.User
 	account := user.Account.(*MemoryAccount)
+	cipherFamily := account.Cipher.Family()
 
 	if len(iv) > 0 {
 		if err := buf.WriteAllBytes(writer, iv); err != nil {
@@ -173,15 +175,15 @@ func WriteTCPRequest(request *protocol.RequestHeader, writer io.Writer, iv []byt
 	}
 
 	header := buf.New()
-	if account.Cipher.Family().IsSpec2022() {
-		header.WriteByte(HeaderTypeClientStream)
+	if cipherFamily.IsSpec2022() {
+		header.WriteByte(HeaderTypeClient)
 		binary.Write(header, binary.BigEndian, uint64(time.Now().Unix()))
 	}
 	if err := addrParser.WriteAddressPort(header, request.Address, request.Port); err != nil {
 		return nil, newError("failed to write address").Base(err)
 	}
 
-	if account.Cipher.Family().IsSpec2022() {
+	if cipherFamily.IsSpec2022() {
 		paddingLen := header.Extend(2)
 		if reader != nil {
 			if err = buf.CopyOnceTimeout(reader, buf.NewWriter(header), time.Millisecond*100); err != nil {
@@ -211,10 +213,11 @@ func WriteTCPRequest(request *protocol.RequestHeader, writer io.Writer, iv []byt
 
 func ReadTCPResponse(user *protocol.MemoryUser, reader io.Reader, requestIv []byte, conn *ProtocolConn) (buf.Reader, error) {
 	account := user.Account.(*MemoryAccount)
+	cipherFamily := account.Cipher.Family()
 	var iv []byte
 	var drainer drain.Drainer
 
-	if !account.Cipher.Family().IsSpec2022() {
+	if !cipherFamily.IsSpec2022() {
 
 		hashkdf := hmac.New(sha256.New, []byte("SSBSKDF"))
 		hashkdf.Write(account.Key)
@@ -249,7 +252,7 @@ func ReadTCPResponse(user *protocol.MemoryUser, reader io.Reader, requestIv []by
 		r = conn.ProtocolReader
 	}
 
-	if account.Cipher.Family().IsSpec2022() {
+	if cipherFamily.IsSpec2022() {
 
 		header := buf.StackNew()
 		defer header.Release()
@@ -259,7 +262,7 @@ func ReadTCPResponse(user *protocol.MemoryUser, reader io.Reader, requestIv []by
 		if err != nil {
 			return nil, err
 		}
-		if header.Byte(1) != HeaderTypeServerStream {
+		if header.Byte(1) != HeaderTypeServer {
 			return nil, newError("bad response type")
 		}
 		epoch := int64(binary.BigEndian.Uint64(header.BytesRange(1, 1+8)))
@@ -278,6 +281,7 @@ func ReadTCPResponse(user *protocol.MemoryUser, reader io.Reader, requestIv []by
 func WriteTCPResponse(request *protocol.RequestHeader, writer io.Writer, requestIV []byte, iv []byte, conn *ProtocolConn) (buf.Writer, error) {
 	user := request.User
 	account := user.Account.(*MemoryAccount)
+	cipherFamily := account.Cipher.Family()
 
 	if len(iv) > 0 {
 		if err := buf.WriteAllBytes(writer, iv); err != nil {
@@ -292,9 +296,9 @@ func WriteTCPResponse(request *protocol.RequestHeader, writer io.Writer, request
 		w = conn.ProtocolWriter
 	}
 
-	if account.Cipher.Family().IsSpec2022() {
+	if cipherFamily.IsSpec2022() {
 		bw := buf.NewBufferedWriter(w)
-		bw.WriteByte(HeaderTypeServerStream)
+		bw.WriteByte(HeaderTypeServer)
 		binary.Write(bw, binary.BigEndian, uint64(time.Now().Unix()))
 		bw.Write(requestIV)
 		bw.SetBuffered(false)
@@ -303,14 +307,33 @@ func WriteTCPResponse(request *protocol.RequestHeader, writer io.Writer, request
 	return w, err
 }
 
-func EncodeUDPPacket(request *protocol.RequestHeader, payload []byte, plugin ProtocolPlugin) (*buf.Buffer, error) {
+func EncodeUDPPacket(request *protocol.RequestHeader, payload []byte, session *udpSession, plugin ProtocolPlugin) (*buf.Buffer, error) {
 	user := request.User
 	account := user.Account.(*MemoryAccount)
+	cipherFamily := account.Cipher.Family()
 
 	buffer := buf.New()
-	ivLen := account.Cipher.IVSize()
+	var ivLen int32
+
+	switch cipherFamily {
+	case CipherFamilyAEADSpec2022:
+		ivLen = 24
+	case CipherFamilyAEADSpec2022UDPBlock:
+		ivLen = 0
+	default:
+		ivLen = account.Cipher.IVSize()
+	}
 	if ivLen > 0 {
 		common.Must2(buffer.ReadFullFrom(rand.Reader, ivLen))
+	}
+
+	if cipherFamily.IsSpec2022() {
+
+		binary.Write(buffer, binary.BigEndian, session.sessionId)
+		binary.Write(buffer, binary.BigEndian, session.nextPacketId())
+		buffer.WriteByte(session.headerType)
+		binary.Write(buffer, binary.BigEndian, uint64(time.Now().Unix()))
+
 	}
 
 	if err := addrParser.WriteAddressPort(buffer, request.Address, request.Port); err != nil {
@@ -318,7 +341,10 @@ func EncodeUDPPacket(request *protocol.RequestHeader, payload []byte, plugin Pro
 		return nil, newError("failed to write address").Base(err)
 	}
 
-	buffer.Write(payload)
+	if cipherFamily.IsSpec2022() {
+		binary.Write(buffer, binary.BigEndian, uint16(0))
+		buffer.Write(payload)
+	}
 
 	if plugin != nil {
 		if newBuffer, err := plugin.EncodePacket(buffer, ivLen); err == nil {
@@ -338,12 +364,21 @@ func EncodeUDPPacket(request *protocol.RequestHeader, payload []byte, plugin Pro
 
 func DecodeUDPPacket(user *protocol.MemoryUser, payload *buf.Buffer, plugin ProtocolPlugin) (*protocol.RequestHeader, *buf.Buffer, error) {
 	account := user.Account.(*MemoryAccount)
+	cipherFamily := account.Cipher.Family()
 
+	var ivLen int32
+	switch cipherFamily {
+	case CipherFamilyAEADSpec2022:
+		ivLen = 24
+	case CipherFamilyAEADSpec2022UDPBlock:
+		ivLen = 0
+	default:
+		ivLen = account.Cipher.IVSize()
+	}
 	var iv []byte
-	if !account.Cipher.Family().IsAEAD() && account.Cipher.IVSize() > 0 {
-		// Keep track of IV as it gets removed from payload in DecodePacket.
-		iv = make([]byte, account.Cipher.IVSize())
-		copy(iv, payload.BytesTo(account.Cipher.IVSize()))
+	if ivLen > 0 {
+		iv = make([]byte, ivLen)
+		copy(iv, payload.BytesTo(ivLen))
 	}
 
 	if err := account.Cipher.DecodePacket(account.Key, payload); err != nil {
@@ -364,11 +399,28 @@ func DecodeUDPPacket(user *protocol.MemoryUser, payload *buf.Buffer, plugin Prot
 		Command: protocol.RequestCommandUDP,
 	}
 
+	if cipherFamily.IsSpec2022() {
+		//TODO: check header
+		_, err := payload.ReadBytes(25)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	payload.SetByte(0, payload.Byte(0)&0x0F)
 
 	addr, port, err := addrParser.ReadAddressPort(nil, payload)
 	if err != nil {
 		return nil, nil, newError("failed to parse address").Base(err)
+	}
+
+	if account.Cipher.Family().IsSpec2022() {
+		var paddingLength uint16
+		err = binary.Read(payload, binary.BigEndian, &paddingLength)
+		if err != nil {
+			return nil, nil, newError("failed to read padding length").Base(err)
+		}
+		payload.ReadBytes(int32(paddingLength))
 	}
 
 	request.Address = addr
@@ -421,6 +473,7 @@ type UDPWriter struct {
 	Writer  io.Writer
 	Request *protocol.RequestHeader
 	Plugin  ProtocolPlugin
+	session *udpSession
 }
 
 func (w *UDPWriter) WriteMultiBuffer(mb buf.MultiBuffer) error {
@@ -436,7 +489,7 @@ func (w *UDPWriter) WriteMultiBuffer(mb buf.MultiBuffer) error {
 				Port:    buffer.Endpoint.Port,
 			}
 		}
-		packet, err := EncodeUDPPacket(request, buffer.Bytes(), w.Plugin)
+		packet, err := EncodeUDPPacket(request, buffer.Bytes(), w.session, w.Plugin)
 		buffer.Release()
 		if err != nil {
 			buf.ReleaseMulti(mb)
@@ -454,7 +507,7 @@ func (w *UDPWriter) WriteMultiBuffer(mb buf.MultiBuffer) error {
 
 // Write implements io.Writer.
 func (w *UDPWriter) Write(payload []byte) (int, error) {
-	packet, err := EncodeUDPPacket(w.Request, payload, w.Plugin)
+	packet, err := EncodeUDPPacket(w.Request, payload, w.session, w.Plugin)
 	if err != nil {
 		return 0, err
 	}
@@ -469,7 +522,7 @@ func (w *UDPWriter) WriteTo(payload []byte, addr gonet.Addr) (n int, err error) 
 	request.Command = protocol.RequestCommandUDP
 	request.Address = net.IPAddress(udpAddr.IP)
 	request.Port = net.Port(udpAddr.Port)
-	packet, err := EncodeUDPPacket(&request, payload, w.Plugin)
+	packet, err := EncodeUDPPacket(&request, payload, w.session, w.Plugin)
 	if err != nil {
 		return 0, err
 	}

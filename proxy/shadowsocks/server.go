@@ -169,6 +169,8 @@ func (s *Server) handlerUDPPayload(ctx context.Context, conn internet.Connection
 		udpDispatcherConstructor = packetAddrDispatcherFactory.NewPacketAddrDispatcher
 	}
 
+	us := newUDPSession(true)
+
 	udpServer := udpDispatcherConstructor(dispatcher, func(ctx context.Context, packet *udp_proto.Packet) {
 		var request *protocol.RequestHeader
 		if packet.Source.IsValid() {
@@ -187,7 +189,7 @@ func (s *Server) handlerUDPPayload(ctx context.Context, conn internet.Connection
 		}
 
 		payload := packet.Payload
-		data, err := EncodeUDPPacket(request, payload.Bytes(), s.protocol)
+		data, err := EncodeUDPPacket(request, payload.Bytes(), us, s.protocol)
 		payload.Release()
 
 		if err != nil {
