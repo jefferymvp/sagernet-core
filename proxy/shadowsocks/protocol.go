@@ -333,7 +333,7 @@ func EncodeUDPPacket(request *protocol.RequestHeader, payload []byte, session *u
 		binary.Write(buffer, binary.BigEndian, session.nextPacketId())
 		buffer.WriteByte(session.headerType)
 		binary.Write(buffer, binary.BigEndian, uint64(time.Now().Unix()))
-
+		binary.Write(buffer, binary.BigEndian, uint16(0)) // padding length
 	}
 
 	if err := addrParser.WriteAddressPort(buffer, request.Address, request.Port); err != nil {
@@ -341,10 +341,7 @@ func EncodeUDPPacket(request *protocol.RequestHeader, payload []byte, session *u
 		return nil, newError("failed to write address").Base(err)
 	}
 
-	if cipherFamily.IsSpec2022() {
-		binary.Write(buffer, binary.BigEndian, uint16(0))
-		buffer.Write(payload)
-	}
+	buffer.Write(payload)
 
 	if plugin != nil {
 		if newBuffer, err := plugin.EncodePacket(buffer, ivLen); err == nil {
@@ -405,6 +402,12 @@ func DecodeUDPPacket(user *protocol.MemoryUser, payload *buf.Buffer, plugin Prot
 		if err != nil {
 			return nil, nil, err
 		}
+		var paddingLength uint16
+		err = binary.Read(payload, binary.BigEndian, &paddingLength)
+		if err != nil {
+			return nil, nil, newError("failed to read padding length").Base(err)
+		}
+		payload.ReadBytes(int32(paddingLength))
 	}
 
 	payload.SetByte(0, payload.Byte(0)&0x0F)
@@ -412,15 +415,6 @@ func DecodeUDPPacket(user *protocol.MemoryUser, payload *buf.Buffer, plugin Prot
 	addr, port, err := addrParser.ReadAddressPort(nil, payload)
 	if err != nil {
 		return nil, nil, newError("failed to parse address").Base(err)
-	}
-
-	if account.Cipher.Family().IsSpec2022() {
-		var paddingLength uint16
-		err = binary.Read(payload, binary.BigEndian, &paddingLength)
-		if err != nil {
-			return nil, nil, newError("failed to read padding length").Base(err)
-		}
-		payload.ReadBytes(int32(paddingLength))
 	}
 
 	request.Address = addr
