@@ -75,36 +75,32 @@ func (c *AEAD2022Cipher) NewDecryptionReader(key []byte, iv []byte, reader io.Re
 }
 
 func (c *AEAD2022Cipher) EncodePacket(key []byte, b *buf.Buffer) error {
-	var nonceLen int32
 	payloadLen := b.Len()
-	var auth *crypto.AEADAuthenticator
 	if c.UDPBlockCreator != nil {
 		// aes
 		packetHeader := b.BytesTo(aes.BlockSize)
-		c.UDPBlockCreator(key).Encrypt(packetHeader, packetHeader)
 		subKey := make([]byte, c.KeyBytes)
 		deriveKey(key, packetHeader[:8], subKey)
 
-		auth = &crypto.AEADAuthenticator{
+		auth := &crypto.AEADAuthenticator{
 			AEAD:           c.AEADAuthCreator(subKey),
 			NonceGenerator: crypto.GenerateStaticBytes(packetHeader[4:16]),
 		}
-		nonceLen = 16
+
+		b.Extend(int32(auth.Overhead()))
+		_, err := auth.Seal(b.BytesTo(aes.BlockSize), b.BytesRange(aes.BlockSize, payloadLen))
+		c.UDPBlockCreator(key).Encrypt(packetHeader, packetHeader)
+		return err
 	} else {
 		// xchacha
-		auth = &crypto.AEADAuthenticator{
+		auth := &crypto.AEADAuthenticator{
 			AEAD:           c.UDPAEADAuthCreator(key),
 			NonceGenerator: crypto.GenerateStaticBytes(b.BytesTo(PacketNonceSize)),
 		}
-		nonceLen = PacketNonceSize
+		b.Extend(int32(auth.Overhead()))
+		_, err := auth.Seal(b.BytesTo(PacketNonceSize), b.BytesRange(PacketNonceSize, payloadLen))
+		return err
 	}
-
-	b.Extend(int32(auth.Overhead()))
-	bbb, err := auth.Seal(b.BytesTo(nonceLen), b.BytesRange(nonceLen, payloadLen))
-
-	newError("encoded ", len(bbb)).AtDebug().WriteToLog()
-
-	return err
 }
 
 func (c *AEAD2022Cipher) DecodePacket(key []byte, b *buf.Buffer) error {
