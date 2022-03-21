@@ -37,6 +37,7 @@ type MemoryAccount struct {
 
 	replayFilter antireplay.GeneralizedReplayFilter
 
+	UoT              bool
 	ReducedIVEntropy bool
 }
 
@@ -369,6 +370,7 @@ func (a *Account) AsAccount() (protocol.Account, error) {
 			}
 			return nil
 		}(),
+		UoT:              a.UdpOverTcp,
 		ReducedIVEntropy: a.ExperimentReducedIvHeadEntropy,
 	}, nil
 }
