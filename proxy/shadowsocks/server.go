@@ -329,7 +329,7 @@ func (s *Server) handleConnection(ctx context.Context, conn internet.Connection,
 	})
 	newError("tunnelling request to ", dest).WriteToLog(session.ExportIDToError(ctx))
 
-	if udpovertcp.GetDestinationSubsetOf(dest) {
+	if request.Command == protocol.RequestCommandUDP || udpovertcp.GetDestinationSubsetOf(dest) {
 		bodyWriter := buf.NewBufferedWriter(buf.NewWriter(conn))
 		responseWriter, err := WriteTCPResponse(request, bodyWriter, requestIV, iv, protocolConn)
 		if err != nil {
@@ -339,7 +339,12 @@ func (s *Server) handleConnection(ctx context.Context, conn internet.Connection,
 		if err != nil {
 			return err
 		}
-		udpWriter := udpovertcp.NewBufferedWriter(responseWriter, nil)
+		var udpWriter buf.Writer
+		if request.Command == protocol.RequestCommandUDP {
+			udpWriter = NewBufferedUoTWriter(responseWriter, nil)
+		} else {
+			udpWriter = udpovertcp.NewBufferedWriter(responseWriter, nil)
+		}
 		var udpServer udp.DispatcherI
 		udpServer = udp.NewSplitDispatcher(dispatcher, func(ctx context.Context, packet *udp_proto.Packet) {
 			buffer := packet.Payload
@@ -351,7 +356,12 @@ func (s *Server) handleConnection(ctx context.Context, conn internet.Connection,
 				conn.Close()
 			}
 		})
-		udpReader := udpovertcp.NewBufferedReader(bodyReader)
+		var udpReader buf.Reader
+		if request.Command == protocol.RequestCommandUDP {
+			udpReader = NewBufferedUoTReader(bodyReader)
+		} else {
+			udpReader = udpovertcp.NewBufferedReader(bodyReader)
+		}
 		for {
 			mb, err := udpReader.ReadMultiBuffer()
 			if err != nil {
