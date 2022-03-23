@@ -202,6 +202,8 @@ func WriteTCPRequest(request *protocol.RequestHeader, writer io.Writer, iv []byt
 				} else {
 					return nil, newError("failed to write request payload").Base(err).AtWarning()
 				}
+			} else {
+				binary.BigEndian.PutUint16(paddingLen, uint16(0))
 			}
 		}
 		if err := w.WriteMultiBuffer(buf.MultiBuffer{header}); err != nil {
