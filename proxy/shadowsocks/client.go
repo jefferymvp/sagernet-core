@@ -340,9 +340,10 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			defer timer.SetTimeout(sessionPolicy.Timeouts.UplinkOnly)
 
 			reader := &UDPReader{
-				Reader: conn,
-				User:   user,
-				Plugin: c.protocol,
+				Reader:  conn,
+				User:    user,
+				Plugin:  c.protocol,
+				session: us,
 			}
 
 			if err := buf.Copy(reader, link.Writer, buf.UpdateActivity(timer)); err != nil {

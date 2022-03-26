@@ -348,6 +348,9 @@ func EncodeUDPPacket(request *protocol.RequestHeader, payload []byte, session *u
 		binary.Write(buffer, binary.BigEndian, session.nextPacketId())
 		buffer.WriteByte(session.headerType)
 		binary.Write(buffer, binary.BigEndian, uint64(time.Now().Unix()))
+		if session.headerType == HeaderTypeServer {
+			binary.Write(buffer, binary.BigEndian, session.remoteSessionId)
+		}
 		binary.Write(buffer, binary.BigEndian, uint16(0)) // padding length
 	}
 
@@ -374,7 +377,7 @@ func EncodeUDPPacket(request *protocol.RequestHeader, payload []byte, session *u
 	return buffer, nil
 }
 
-func DecodeUDPPacket(user *protocol.MemoryUser, payload *buf.Buffer, plugin ProtocolPlugin) (*protocol.RequestHeader, *buf.Buffer, error) {
+func DecodeUDPPacket(user *protocol.MemoryUser, payload *buf.Buffer, session *udpSession, plugin ProtocolPlugin) (*protocol.RequestHeader, *buf.Buffer, error) {
 	account := user.Account.(*MemoryAccount)
 	cipherFamily := account.Cipher.Family()
 
@@ -412,17 +415,62 @@ func DecodeUDPPacket(user *protocol.MemoryUser, payload *buf.Buffer, plugin Prot
 	}
 
 	if cipherFamily.IsSpec2022() {
-		// TODO: check header
-		_, err := payload.ReadBytes(25)
+		// packetHeader
+		var sessionId uint64
+		err := binary.Read(payload, binary.BigEndian, &sessionId)
 		if err != nil {
 			return nil, nil, err
+		}
+
+		if session.remoteSessionId == 0 {
+			session.remoteSessionId = sessionId
+		} else if sessionId != session.remoteSessionId {
+			session.lastRemoteSessionId = session.remoteSessionId
+			session.remoteSessionId = sessionId
+		}
+
+		var packetId uint64
+		err = binary.Read(payload, binary.BigEndian, &packetId)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		headerType, err := payload.ReadBytes(1)
+		if err != nil {
+			return nil, nil, err
+		}
+		if headerType[0] == session.headerType {
+			return nil, nil, newError("bad header type")
+		}
+
+		var epoch uint64
+		err = binary.Read(payload, binary.BigEndian, &epoch)
+		if err != nil {
+			return nil, nil, err
+		}
+		if math.Abs(float64(uint64(time.Now().Unix())-epoch)) > 30 {
+			return nil, nil, newError("bad timestamp")
+		}
+		if session.headerType == HeaderTypeClient {
+			var clientSessionId uint64
+			err = binary.Read(payload, binary.BigEndian, &clientSessionId)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if clientSessionId != session.sessionId {
+				return nil, nil, newError("bad session id")
+			}
 		}
 		var paddingLength uint16
 		err = binary.Read(payload, binary.BigEndian, &paddingLength)
 		if err != nil {
 			return nil, nil, newError("failed to read padding length").Base(err)
 		}
-		payload.ReadBytes(int32(paddingLength))
+		_, err = payload.ReadBytes(int32(paddingLength))
+		if err != nil {
+			return nil, nil, newError("failed to discard padding")
+		}
 	}
 
 	payload.SetByte(0, payload.Byte(0)&0x0F)
@@ -439,9 +487,10 @@ func DecodeUDPPacket(user *protocol.MemoryUser, payload *buf.Buffer, plugin Prot
 }
 
 type UDPReader struct {
-	Reader io.Reader
-	User   *protocol.MemoryUser
-	Plugin ProtocolPlugin
+	Reader  io.Reader
+	User    *protocol.MemoryUser
+	Plugin  ProtocolPlugin
+	session *udpSession
 }
 
 func (v *UDPReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
@@ -451,7 +500,7 @@ func (v *UDPReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
 		buffer.Release()
 		return nil, err
 	}
-	header, payload, err := DecodeUDPPacket(v.User, buffer, v.Plugin)
+	header, payload, err := DecodeUDPPacket(v.User, buffer, v.session, v.Plugin)
 	if err != nil {
 		buffer.Release()
 		return nil, err
@@ -468,7 +517,7 @@ func (v *UDPReader) ReadFrom(p []byte) (n int, addr gonet.Addr, err error) {
 		buffer.Release()
 		return 0, nil, err
 	}
-	vaddr, payload, err := DecodeUDPPacket(v.User, buffer, v.Plugin)
+	vaddr, payload, err := DecodeUDPPacket(v.User, buffer, v.session, v.Plugin)
 	if err != nil {
 		buffer.Release()
 		return 0, nil, err

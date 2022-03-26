@@ -151,9 +151,11 @@ func deriveKey(secret, salt, outKey []byte) {
 }
 
 type udpSession struct {
-	sessionId  uint64
-	packetId   uint64
-	headerType byte
+	sessionId           uint64
+	packetId            uint64
+	headerType          byte
+	remoteSessionId     uint64
+	lastRemoteSessionId uint64
 }
 
 func (s *udpSession) nextPacketId() uint64 {
