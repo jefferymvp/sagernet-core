@@ -3,7 +3,6 @@ package shadowsocks
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"encoding/binary"
 	"io"
 	"math/rand"
 	"sync/atomic"
@@ -12,9 +11,7 @@ import (
 
 	"github.com/v2fly/v2ray-core/v5/common/buf"
 	"github.com/v2fly/v2ray-core/v5/common/crypto"
-	"github.com/v2fly/v2ray-core/v5/common/net"
 	"github.com/v2fly/v2ray-core/v5/common/protocol"
-	"github.com/v2fly/v2ray-core/v5/proxy/socks"
 )
 
 const (
@@ -170,131 +167,4 @@ func newUDPSession(server bool) *udpSession {
 		s.packetId = 1<<63 - 1
 	}
 	return s
-}
-
-type UoTReader struct {
-	io.Reader
-}
-
-func NewUoTReader(reader io.Reader) *UoTReader {
-	return &UoTReader{Reader: reader}
-}
-
-func NewBufferedUoTReader(reader buf.Reader) *UoTReader {
-	return &UoTReader{Reader: &buf.BufferedReader{Reader: reader}}
-}
-
-func (r *UoTReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
-	buffer := buf.New()
-	var length uint16
-	err := binary.Read(r, binary.BigEndian, &length)
-	if err != nil {
-		buffer.Release()
-		return nil, err
-	}
-	_, err = io.ReadFull(r, buffer.Extend(int32(length)))
-	if err != nil {
-		buffer.Release()
-		return nil, err
-	}
-	addr, port, err := socks.AddrParser.ReadAddressPort(nil, buffer)
-	if err != nil {
-		buffer.Release()
-		return nil, err
-	}
-	endpoint := net.UDPDestination(addr, port)
-	buffer.Endpoint = &endpoint
-	return buf.MultiBuffer{buffer}, nil
-}
-
-type UoTWriter struct {
-	io.Writer
-	Flusher buf.Flusher
-	Request *net.Destination
-}
-
-func NewUoTWriter(writer io.Writer, request *net.Destination) *UoTWriter {
-	w := &UoTWriter{
-		Writer:  writer,
-		Request: request,
-	}
-	if flusher, ok := writer.(buf.Flusher); ok {
-		w.Flusher = flusher
-	}
-	return w
-}
-
-func NewBufferedUoTWriter(writer buf.Writer, request *net.Destination) *UoTWriter {
-	bufferedWriter := buf.NewBufferedWriter(writer)
-	return &UoTWriter{
-		Writer:  bufferedWriter,
-		Flusher: bufferedWriter,
-		Request: request,
-	}
-}
-
-func (w *UoTWriter) WriteMultiBuffer(mb buf.MultiBuffer) error {
-	defer buf.ReleaseMulti(mb)
-	for _, packet := range mb {
-		if packet.Endpoint == nil {
-			packet.Endpoint = w.Request
-			if w.Request == nil {
-				return newError("empty packet destination")
-			}
-		}
-		header := buf.New()
-		defer header.Release()
-		err := socks.AddrParser.WriteAddressPort(header, packet.Endpoint.Address, packet.Endpoint.Port)
-		if err != nil {
-			return err
-		}
-		err = binary.Write(header, binary.BigEndian, uint16(header.Len()+packet.Len()))
-		if err != nil {
-			return err
-		}
-		_, err = w.Write(header.Bytes())
-		if err != nil {
-			return err
-		}
-		_, err = w.Write(packet.Bytes())
-		if err != nil {
-			return err
-		}
-	}
-	if w.Flusher != nil {
-		return w.Flusher.Flush()
-	}
-	return nil
-}
-
-type UoTTransportReader struct {
-	buf.Reader
-}
-
-func NewUoTTransportReader(reader buf.Reader) *UoTTransportReader {
-	return &UoTTransportReader{reader}
-}
-
-func (r *UoTTransportReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
-	mb, err := r.Reader.ReadMultiBuffer()
-	if err != nil {
-		return nil, err
-	}
-	mbret := make(buf.MultiBuffer, 0, mb.Len()*2)
-	index := 0
-	for _, buffer := range mb {
-		if buffer.Endpoint == nil {
-			buf.ReleaseMulti(mb)
-			buf.ReleaseMulti(mbret)
-			return nil, newError("empty udp endpoint")
-		}
-		header := buf.New()
-		length := buffer.Extend(2)
-		socks.AddrParser.WriteAddressPort(header, buffer.Endpoint.Address, buffer.Endpoint.Port)
-		binary.BigEndian.PutUint16(length, uint16(header.Len()-2+buffer.Len()))
-		mbret[index*2] = header
-		mbret[index*2+1] = buffer
-		index++
-	}
-	return mbret, nil
 }

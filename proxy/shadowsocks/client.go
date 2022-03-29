@@ -221,19 +221,12 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 
 	if uot {
 
-		shadowUoT := account.Cipher.Family().IsSpec2022()
 		requestDone := func() error {
 			defer timer.SetTimeout(sessionPolicy.Timeouts.DownlinkOnly)
 			bufferedWriter := buf.NewBufferedWriter(buf.NewWriter(conn))
-			var transportReader buf.Reader
-			if shadowUoT {
-				transportReader = NewUoTTransportReader(link.Reader)
-			} else {
-				transportReader = udpovertcp.NewTransportReader(link.Reader)
-			}
 			request.Address = net.DomainAddress(udpovertcp.UOTMagicAddress)
 			request.Port = 0
-			bodyWriter, err := WriteTCPRequest(request, bufferedWriter, iv, transportReader, protocolConn)
+			bodyWriter, err := WriteTCPRequest(request, bufferedWriter, iv, udpovertcp.NewTransportReader(link.Reader), protocolConn)
 			if err != nil {
 				return newError("failed to write request").Base(err)
 			}
@@ -241,13 +234,7 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			if err != nil {
 				return err
 			}
-			var writer buf.Writer
-			if shadowUoT {
-				writer = NewBufferedUoTWriter(bodyWriter, &destination)
-			} else {
-				writer = udpovertcp.NewBufferedWriter(bodyWriter, &destination)
-			}
-			return buf.Copy(link.Reader, writer, buf.UpdateActivity(timer))
+			return buf.Copy(link.Reader, udpovertcp.NewBufferedWriter(bodyWriter, &destination), buf.UpdateActivity(timer))
 		}
 
 		responseDone := func() error {
@@ -260,13 +247,7 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			if err != nil {
 				return err
 			}
-			var reader buf.Reader
-			if shadowUoT {
-				reader = NewBufferedUoTReader(responseReader)
-			} else {
-				reader = udpovertcp.NewBufferedReader(responseReader)
-			}
-			return buf.Copy(reader, link.Writer, buf.UpdateActivity(timer))
+			return buf.Copy(udpovertcp.NewBufferedReader(responseReader), link.Writer, buf.UpdateActivity(timer))
 		}
 
 		responseDoneAndCloseWriter := task.OnSuccess(responseDone, task.Close(link.Writer))
