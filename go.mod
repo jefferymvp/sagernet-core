@@ -41,8 +41,8 @@ require (
 	lukechampine.com/blake3 v1.1.7
 )
 
-// https://github.com/google/gvisor/releases/tag/release-20220103.0
-replace gvisor.dev/gvisor => github.com/sagernet/gvisor v0.0.0-20220213143053-df431bee78e3
+// https://github.com/google/gvisor/releases/tag/release-20220314.0
+replace gvisor.dev/gvisor => github.com/sagernet/gvisor v0.0.0-20220402114650-763d12dc953e
 
 require (
 	github.com/cheekybits/genny v1.0.0 // indirect
