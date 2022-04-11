@@ -144,7 +144,9 @@ func getGrpcClient(ctx context.Context, dest net.Destination, dialOption grpc.Di
 			PermitWithoutStream: grpcSettings.PermitWithoutStream,
 		}))
 	}
-
+	if grpcSettings.InitialWindowsSize > 0 {
+		grpcOptions = append(grpcOptions, grpc.WithInitialWindowSize(grpcSettings.InitialWindowsSize))
+	}
 	conn, err := grpc.Dial(dest.Address.String()+":"+dest.Port.String(), grpcOptions...)
 	globalDialerMap[dest] = conn
 	return conn, canceller, err
