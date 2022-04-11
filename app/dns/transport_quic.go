@@ -32,7 +32,7 @@ type QUICTransport struct {
 	dispatcher routing.Dispatcher
 
 	access  sync.RWMutex
-	session quic.Session
+	session quic.Connection
 }
 
 func (t *QUICTransport) Close() error {
@@ -60,7 +60,7 @@ func NewQUICLocalTransport(ctx *transportContext) *QUICTransport {
 	}
 }
 
-func (t *QUICTransport) getConnection(ctx context.Context) (quic.Session, error) {
+func (t *QUICTransport) getConnection(ctx context.Context) (quic.Connection, error) {
 	t.access.RLock()
 	session := t.session
 	t.access.RUnlock()

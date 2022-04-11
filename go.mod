@@ -17,9 +17,9 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/jhump/protoreflect v1.12.0
 	github.com/kierdavis/cfb8 v0.0.0-20180105024805-3a17c36ee2f8
-	github.com/lucas-clemente/quic-go v0.26.0
+	github.com/lucas-clemente/quic-go v0.27.0
 	github.com/marten-seemann/qtls-go1-17 v0.1.1
-	github.com/miekg/dns v1.1.47
+	github.com/miekg/dns v1.1.48
 	github.com/pires/go-proxyproto v0.6.2
 	github.com/seiflotfy/cuckoofilter v0.0.0-20220312154859-af7fbb8e765b
 	github.com/stretchr/testify v1.7.1
@@ -28,11 +28,11 @@ require (
 	github.com/v2fly/ss-bloomring v0.0.0-20210312155135-28617310f63e
 	github.com/xtls/go v0.0.0-20210920065950-d4af136d3672
 	go.starlark.net v0.0.0-20220328144851-d1966c6b9fcd
-	golang.org/x/crypto v0.0.0-20220321153916-2c7772ba3064
-	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b
+	golang.org/x/crypto v0.0.0-20220408190544-5352b0902921
+	golang.org/x/net v0.0.0-20220407224826-aac1ed45d8e3
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220328115105-d36c6a25d886
-	golang.zx2c4.com/wireguard v0.0.0-20220318042302-193cf8d6a5d6
+	golang.org/x/sys v0.0.0-20220408201424-a24fb2fb8a0f
+	golang.zx2c4.com/wireguard v0.0.0-20220407013110-ef5c587f782d
 	google.golang.org/grpc v1.45.0
 	google.golang.org/protobuf v1.28.0
 	gvisor.dev/gvisor v0.0.0

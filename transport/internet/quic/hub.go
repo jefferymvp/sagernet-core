@@ -22,7 +22,7 @@ type Listener struct {
 	addConn  internet.ConnHandler
 }
 
-func (l *Listener) acceptStreams(session quic.Session) {
+func (l *Listener) acceptStreams(session quic.Connection) {
 	for {
 		stream, err := session.AcceptStream(context.Background())
 		if err != nil {
