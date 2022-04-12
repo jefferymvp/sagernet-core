@@ -12,9 +12,9 @@ type TransportConfig struct {
 	WSConfig   *WebSocketConfig    `json:"wsSettings"`
 	HTTPConfig *HTTPConfig         `json:"httpSettings"`
 	DSConfig   *DomainSocketConfig `json:"dsSettings"`
-	QUICConfig *QUICConfig `json:"quicSettings"`
-	GunConfig  *GunConfig  `json:"gunSettings"`
-	GRPCConfig *GunConfig  `json:"grpcSettings"`
+	QUICConfig *QUICConfig         `json:"quicSettings"`
+	GunConfig  *GunConfig          `json:"gunSettings"`
+	GRPCConfig *GunConfig          `json:"grpcSettings"`
 }
 
 // Build implements Buildable.
