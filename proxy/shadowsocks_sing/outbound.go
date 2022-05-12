@@ -2,10 +2,8 @@ package shadowsocks_sing
 
 import (
 	"context"
-	"encoding/base64"
 	"io"
 	"runtime"
-	"strings"
 	"time"
 
 	C "github.com/sagernet/sing/common"
@@ -16,8 +14,7 @@ import (
 	"github.com/sagernet/sing/common/random"
 	"github.com/sagernet/sing/common/rw"
 	"github.com/sagernet/sing/protocol/shadowsocks"
-	"github.com/sagernet/sing/protocol/shadowsocks/shadowaead"
-	"github.com/sagernet/sing/protocol/shadowsocks/shadowaead_2022"
+	"github.com/sagernet/sing/protocol/shadowsocks/shadowimpl"
 	"github.com/v2fly/v2ray-core/v5/common"
 	"github.com/v2fly/v2ray-core/v5/common/buf"
 	"github.com/v2fly/v2ray-core/v5/common/net"
@@ -48,57 +45,17 @@ func NewClient(ctx context.Context, config *ClientConfig) (*Outbound, error) {
 			Network: net.Network_TCP,
 		},
 	}
-	if config.Method == shadowsocks.MethodNone {
-		o.method = shadowsocks.NewNone()
-	} else if common.Contains(shadowaead.List, config.Method) {
-		var key []byte
-		if config.Key != "" {
-			bKdy, err := base64.StdEncoding.DecodeString(config.Key)
-			if err != nil {
-				return nil, newError("shadowsocks: decode key ", config.Key).Base(err)
-			}
-			key = bKdy
+	var rng io.Reader = random.Default
+	if config.ReducedIvHeadEntropy {
+		rng = &shadowsocks.ReducedEntropyReader{
+			Reader: rng,
 		}
-		var rng io.Reader = random.Default
-		if config.ReducedIvHeadEntropy {
-			rng = &shadowsocks.ReducedEntropyReader{
-				Reader: rng,
-			}
-		}
-		method, err := shadowaead.New(config.Method, key, []byte(config.Password), rng)
-		if err != nil {
-			return nil, newError("create method").Base(err)
-		}
-		o.method = method
-	} else if common.Contains(shadowaead_2022.List, config.Method) {
-		if config.Password != "" {
-			return nil, newError("use psk instead of password")
-		}
-		if config.Key == "" {
-			return nil, newError("missing psk")
-		}
-		var pskList [][]byte
-		for _, ks := range strings.Split(config.Key, ":") {
-			psk, err := base64.StdEncoding.DecodeString(ks)
-			if err != nil {
-				return nil, newError("decode key ", ks).Base(err)
-			}
-			pskList = append(pskList, psk)
-		}
-		var rng io.Reader = random.Default
-		if config.ReducedIvHeadEntropy {
-			rng = &shadowsocks.ReducedEntropyReader{
-				Reader: rng,
-			}
-		}
-		method, err := shadowaead_2022.New(config.Method, pskList, rng)
-		if err != nil {
-			return nil, newError("create method").Base(err)
-		}
-		o.method = method
-	} else {
-		return nil, newError("unknown method ", config.Method)
 	}
+	method, err := shadowimpl.FetchMethod(config.Method, config.Key, config.Password, rng)
+	if err != nil {
+		return nil, err
+	}
+	o.method = method
 	return o, nil
 }
 
