@@ -358,10 +358,10 @@ github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQD
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/sagernet/gvisor v0.0.0-20220402114650-763d12dc953e h1:Y4avBAtZ59OWvLl6zP9sF62jtMEVRPIH78IQctq9aXQ=
 github.com/sagernet/gvisor v0.0.0-20220402114650-763d12dc953e/go.mod h1:tWwEcFvJavs154OdjFCw78axNrsDlz4Zh8jvPqwcpGI=
-github.com/sagernet/sing v0.0.0-20220606113732-5efacc1c7db5 h1:jE4puDTAniQRtt/TmmHVIdgqo3RDoi+ztPa2oQXpG28=
-github.com/sagernet/sing v0.0.0-20220606113732-5efacc1c7db5/go.mod h1:w2HnJzXKHpD6F5Z/9XlSD4qbcpHY2RSZuQnFzqgELMg=
-github.com/sagernet/sing-shadowsocks v0.0.0-20220607021139-f9c820eb0fc8 h1:zaZZm12ZRap7nSGR4B2OEX50PYX4yRhA7GIvAbeHFCo=
-github.com/sagernet/sing-shadowsocks v0.0.0-20220607021139-f9c820eb0fc8/go.mod h1:4Wb0SmPgT8ZBQeY2kf4LFI6jl4T9mHJ2uDPdxG5ky38=
+github.com/sagernet/sing v0.0.0-20220609091055-86d0144940e7 h1:Q+uNKLNSKqpx+p96qcBTVFh8RUKiQFr4IrNVi5Q5yl0=
+github.com/sagernet/sing v0.0.0-20220609091055-86d0144940e7/go.mod h1:w2HnJzXKHpD6F5Z/9XlSD4qbcpHY2RSZuQnFzqgELMg=
+github.com/sagernet/sing-shadowsocks v0.0.0-20220609092835-699292971c13 h1:bQN0hjTHdB7SyaD9yjEYAl+bDl/kXW9zC0xNa+LMTrA=
+github.com/sagernet/sing-shadowsocks v0.0.0-20220609092835-699292971c13/go.mod h1:Fp/9+odJhtgDmiHbZClMLnxaVvmDRJxwA7u/+uXWDiQ=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/secure-io/siv-go v0.0.0-20180922214919-5ff40651e2c4 h1:zOjq+1/uLzn/Xo40stbvjIY/yehG0+mfmlsiEmc0xmQ=
 github.com/secure-io/siv-go v0.0.0-20180922214919-5ff40651e2c4/go.mod h1:aI+8yClBW+1uovkHw6HM01YXnYB8vohtB9C83wzx34E=

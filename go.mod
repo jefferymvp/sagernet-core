@@ -22,8 +22,8 @@ require (
 	github.com/miekg/dns v1.1.49
 	github.com/mustafaturan/bus v1.0.2
 	github.com/pires/go-proxyproto v0.6.2
-	github.com/sagernet/sing v0.0.0-20220606113732-5efacc1c7db5
-	github.com/sagernet/sing-shadowsocks v0.0.0-20220607021139-f9c820eb0fc8
+	github.com/sagernet/sing v0.0.0-20220609091055-86d0144940e7
+	github.com/sagernet/sing-shadowsocks v0.0.0-20220609092835-699292971c13
 	github.com/seiflotfy/cuckoofilter v0.0.0-20220411075957-e3b120b3f5fb
 	github.com/stretchr/testify v1.7.2
 	github.com/v2fly/BrowserBridge v0.0.0-20210430233438-0570fc1d7d08

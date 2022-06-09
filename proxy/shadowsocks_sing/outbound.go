@@ -218,7 +218,7 @@ func (o *Outbound) ProcessConn(ctx context.Context, conn net.Conn, dialer intern
 
 	serverConn := o.method.DialEarlyConn(connection, ToSocksaddr(destination))
 
-	if cr, ok := conn.(bufio.CachedReader); ok {
+	if cr, ok := conn.(N.CachedReader); ok {
 		cached := cr.ReadCached()
 		if cached != nil && !cached.IsEmpty() {
 			_, err = serverConn.Write(cached.Bytes())
